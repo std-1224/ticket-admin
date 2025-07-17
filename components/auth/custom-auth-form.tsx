@@ -146,7 +146,7 @@ export function CustomAuthForm() {
     setMessage(null)
 
     try {
-      await signInWithOAuth('google', `${window.location.origin}/auth/callback`)
+      await signInWithOAuth('google', `${process.env.NEXT_PUBLIC_REDIRECT_URL}/auth/callback`)
       toast({
         title: "Redirigiendo a Google",
         description: "Serás redirigido para autenticarte con Google",

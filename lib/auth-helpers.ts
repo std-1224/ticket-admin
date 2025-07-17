@@ -36,7 +36,7 @@ export async function signUpWithPassword(email: string, password: string, redire
     email,
     password,
     options: {
-      emailRedirectTo: redirectTo || `${window.location.origin}/auth/callback`,
+      emailRedirectTo: redirectTo || `${process.env.NEXT_PUBLIC_REDIRECT_URL}/auth/callback`,
     },
   })
   
@@ -55,7 +55,7 @@ export async function signInWithOAuth(provider: 'google' | 'github' | 'facebook'
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: redirectTo || `${window.location.origin}/auth/callback`,
+      redirectTo: redirectTo || `${process.env.NEXT_PUBLIC_REDIRECT_URL}/auth/callback`,
     },
   })
   
@@ -72,7 +72,7 @@ export async function signInWithOAuth(provider: 'google' | 'github' | 'facebook'
  */
 export async function resetPassword(email: string, redirectTo?: string) {
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: redirectTo || `${window.location.origin}/auth/callback`,
+    redirectTo: redirectTo || `${process.env.NEXT_PUBLIC_REDIRECT_URL}/auth/callback`,
   })
   
   if (error) {
