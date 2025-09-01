@@ -261,10 +261,6 @@ export function MyEventsContent() {
                         <Eye className="h-4 w-4 mr-1" />
                         View
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
                     </div>
                   </div>
                 </CardContent>

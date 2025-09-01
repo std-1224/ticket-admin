@@ -47,7 +47,7 @@ export const QRScannerPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const auth = useAuth();
   const scannerId = auth.user?.id;
-  const isScanner = auth.user?.user_metadata?.role === "scanner";
+  // const isScanner = auth.user?.user_metadata?.role === "scanner";
   const { toast } = useToast()
 
   // Handle QR code scanning from manual input (updated to work with camera result)
@@ -62,14 +62,14 @@ export const QRScannerPage = () => {
       })
       return
     }
-    if (!isScanner) {
-      toast({
-        title: "Access Denied",
-        description: "You do not have permission to scan tickets",
-        variant: "destructive"
-      })
-      return
-    }
+    // if (!isScanner) {
+    //   toast({
+    //     title: "Access Denied",
+    //     description: "You do not have permission to scan tickets",
+    //     variant: "destructive"
+    //   })
+    //   return
+    // }
     try {
       const result = await validateTicket(code.trim(), scannerId || "")
 
@@ -99,11 +99,11 @@ export const QRScannerPage = () => {
     }
   }
 
-  useEffect(() => {
-    if (isScanner) {
-      fetchScanHistory()
-    }
-  }, [isScanner])
+  // useEffect(() => {
+  //   if (isScanner) {
+  //     fetchScanHistory()
+  //   }
+  // }, [isScanner])
 
   // Handle QR code scanning from camera (copied from merch-admin)
   const handleQRScan = (result: any) => {
@@ -221,14 +221,14 @@ export const QRScannerPage = () => {
 
   // Start camera scanning (Safari compatible)
   const handleStartScanning = async () => {
-    if (!isScanner) {
-      toast({
-        title: "Access Denied",
-        description: "Please login as scanner first",
-        variant: "destructive"
-      })
-      return
-    }
+    // if (!isScanner) {
+    //   toast({
+    //     title: "Access Denied",
+    //     description: "Please login as scanner first",
+    //     variant: "destructive"
+    //   })
+    //   return
+    // }
     setScannerError("") // Clear previous errors
 
     const deviceInfo = getDeviceInfo()
@@ -296,14 +296,14 @@ export const QRScannerPage = () => {
 
   // Handle QR code image upload
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!isScanner) {
-      toast({
-        title: "Access Denied",
-        description: "You do not have permission to scan tickets",
-        variant: "destructive"
-      })
-      return
-    }
+    // if (!isScanner) {
+    //   toast({
+    //     title: "Access Denied",
+    //     description: "You do not have permission to scan tickets",
+    //     variant: "destructive"
+    //   })
+    //   return
+    // }
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -376,15 +376,15 @@ export const QRScannerPage = () => {
   // Handle upload button click
   const handleUploadClick = () => {
     console.log("handleUploadClick")
-    if (!isScanner) {
-      console.log("not scanner")
-      toast({
-        title: "Access Denied",
-        description: "Please login as scanner first",
-        variant: "destructive"
-      })
-      return
-    }
+    // if (!isScanner) {
+    //   console.log("not scanner")
+    //   toast({
+    //     title: "Access Denied",
+    //     description: "Please login as scanner first",
+    //     variant: "destructive"
+    //   })
+    //   return
+    // }
     fileInputRef.current?.click()
   }
 

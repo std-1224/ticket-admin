@@ -4,11 +4,14 @@ import { useState, useRef, useEffect } from "react"
 import {
   Calendar,
   CheckCircle,
+  Edit,
   Eye,
   MapPin,
   PlusCircle,
+  Save,
   Trash2,
   Upload,
+  X,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -34,13 +37,13 @@ import { useSearchParams, useRouter } from "next/navigation"
 
 // Sample Data in English
 const eventDetails = {
-  title: "Stellar Music Festival",
-  date: "2025-10-26",
-  time: "19:00",
-  location: "Grand Park, Los Angeles",
+  title: "",
+  date: "",
+  time: "",
+  location: "",
   description:
-    "An unforgettable night under the stars with the best artists from the current music scene. Don't miss it!",
-  image: "/placeholder.svg?height=400&width=800",
+    "",
+  image: "",
 }
 
 const overviewStats = {
@@ -73,6 +76,8 @@ export const EventsPage = () => {
   const [savedEvent, setSavedEvent] = useState<typeof eventDetails | null>(null)
   const [currentEvent, setCurrentEvent] = useState<any>(null)
   const [loadingEvent, setLoadingEvent] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [originalEventData, setOriginalEventData] = useState<typeof eventDetails | null>(null)
 
   // New state for image upload and API integration
   const [isUploading, setIsUploading] = useState(false)
@@ -126,14 +131,16 @@ export const EventsPage = () => {
       }
 
       setCurrentEvent(event)
-      setEventData({
+      const eventDataForState = {
         title: event.title,
         date: event.date,
         time: event.time || '',
         location: event.location || '',
         description: event.description || '',
         image: event.image_url || ''
-      })
+      }
+      setEventData(eventDataForState)
+      setOriginalEventData(eventDataForState) // Store original data for cancel functionality
       setUploadedImageUrl(event.image_url)
 
       // Fetch ticket types for this event
@@ -322,6 +329,80 @@ export const EventsPage = () => {
     }))
   }
 
+  const handleUpdateEvent = async () => {
+    if (!user || !eventId) {
+      toast({
+        title: "Error",
+        description: "You must be logged in and have a valid event ID to update an event",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Validate required fields
+    if (!eventData.title || !eventData.date) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields (title and date)",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsSaving(true)
+    setSaveStatus("saving")
+
+    try {
+      const eventPayload = {
+        title: eventData.title,
+        description: eventData.description,
+        date: eventData.date,
+        time: eventData.time,
+        location: eventData.location,
+        image_url: uploadedImageUrl || eventData.image,
+      }
+
+      console.log('Updating event with payload:', eventPayload)
+
+      const response = await fetch(`/api/events?id=${eventId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(eventPayload),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update event')
+      }
+
+      setSaveStatus("saved")
+      setIsEditMode(false)
+      setOriginalEventData(eventData) // Update original data after successful save
+
+      toast({
+        title: "Success",
+        description: "Event updated successfully!",
+      })
+
+      // Refresh event data
+      await fetchEventDetails()
+
+    } catch (error: any) {
+      console.error('Update error:', error)
+      setSaveStatus("error")
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update event",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const handleSaveEvent = async () => {
     if (!user) {
       toast({
@@ -392,9 +473,8 @@ export const EventsPage = () => {
       })
 
       // Redirect to event details page to manage ticket types
-      setTimeout(() => {
-        router.push(`/eventos?eventId=${result.event.id}`)
-      }, 1500)
+
+      router.push("/eventos")
 
     } catch (error: any) {
       console.error('Save error:', error)
@@ -443,7 +523,24 @@ export const EventsPage = () => {
       ...prev,
       [field]: value,
     }))
-    setSaveStatus("idle") // Resetear estado cuando hay cambios
+    setSaveStatus("idle") // Reset status when there are changes
+  }
+
+  const handleEditToggle = () => {
+    setIsEditMode(!isEditMode)
+    if (!isEditMode) {
+      // Entering edit mode - store current data as original
+      setOriginalEventData(eventData)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    if (originalEventData) {
+      setEventData(originalEventData)
+      setUploadedImageUrl(originalEventData.image)
+    }
+    setIsEditMode(false)
+    setSaveStatus("idle")
   }
 
   // Main view with saved event
@@ -506,15 +603,51 @@ export const EventsPage = () => {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">
             {eventId ? "Event Details" : savedEvent ? "Create New Event" : "Create Event"}
+            {eventId && <span className="text-sm text-muted-foreground ml-2">({isEditMode ? "Edit Mode" : "View Mode"})</span>}
           </h1>
           <p className="text-muted-foreground text-sm">
             {eventId ? "View and manage event details and ticket types" : "Configure your event details"}
           </p>
         </div>
         {eventId ? (
-          <Button variant="outline" onClick={() => window.history.back()} className="bg-transparent">
-            Back to My Events
-          </Button>
+          <div className="flex gap-2">
+            {isEditMode ? (
+              <>
+                <Button variant="outline" onClick={handleCancelEdit} className="bg-transparent">
+                  <X className="mr-2 h-4 w-4" />
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdateEvent} disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Saving...
+                    </>
+                  ) : saveStatus === "saved" ? (
+                    <>
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Saved
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => window.history.back()} className="bg-transparent">
+                  Back to My Events
+                </Button>
+                <Button onClick={handleEditToggle}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Event
+                </Button>
+              </>
+            )}
+          </div>
         ) : savedEvent && (
           <Button variant="outline" onClick={() => setIsCreateEventOpen(false)} className="bg-transparent">
             Cancel
@@ -538,7 +671,14 @@ export const EventsPage = () => {
             <div className="lg:col-span-2 space-y-3 sm:space-y-6">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base sm:text-xl">Event Information</CardTitle>
+                  <CardTitle className="text-base sm:text-xl flex items-center gap-2">
+                    Event Information
+                    {eventId && (
+                      <span className={`text-xs px-2 py-1 rounded-full ${isEditMode ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                        {isEditMode ? 'Editing' : 'Read Only'}
+                      </span>
+                    )}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
@@ -549,8 +689,9 @@ export const EventsPage = () => {
                       id="event-title"
                       value={eventData.title}
                       onChange={(e) => handleEventDataChange("title", e.target.value)}
-                      className="text-sm"
-                      readOnly={!!eventId}
+                      className={`text-sm ${!!eventId && !isEditMode ? 'bg-muted' : ''}`}
+                      disabled={!!eventId && !isEditMode}
+                      placeholder={isEditMode ? "Enter event title..." : ""}
                     />
                   </div>
                   <div className="space-y-2">
@@ -562,8 +703,9 @@ export const EventsPage = () => {
                       rows={4}
                       value={eventData.description}
                       onChange={(e) => handleEventDataChange("description", e.target.value)}
-                      className="text-sm"
-                      readOnly={!!eventId}
+                      className={`text-sm ${!!eventId && !isEditMode ? 'bg-muted' : ''}`}
+                      disabled={!!eventId && !isEditMode}
+                      placeholder={isEditMode ? "Enter event description..." : ""}
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -576,9 +718,9 @@ export const EventsPage = () => {
                         type="date"
                         value={eventData.date}
                         onChange={(e) => handleEventDataChange("date", e.target.value)}
-                        className="text-sm"
+                        className={`text-sm ${!!eventId && !isEditMode ? 'bg-muted' : ''}`}
                         required
-                        readOnly={!!eventId}
+                        disabled={!!eventId && !isEditMode}
                       />
                     </div>
                     <div className="space-y-2">
@@ -590,8 +732,8 @@ export const EventsPage = () => {
                         type="time"
                         value={eventData.time}
                         onChange={(e) => handleEventDataChange("time", e.target.value)}
-                        className="text-sm"
-                        readOnly={!!eventId}
+                        className={`text-sm ${!!eventId && !isEditMode ? 'bg-muted' : ''}`}
+                        disabled={!!eventId && !isEditMode}
                       />
                     </div>
                   </div>
@@ -603,8 +745,9 @@ export const EventsPage = () => {
                       id="event-location"
                       value={eventData.location}
                       onChange={(e) => handleEventDataChange("location", e.target.value)}
-                      className="text-sm"
-                      readOnly={!!eventId}
+                      className={`text-sm ${!!eventId && !isEditMode ? 'bg-muted' : ''}`}
+                      disabled={!!eventId && !isEditMode}
+                      placeholder={isEditMode ? "Enter event location..." : ""}
                     />
                   </div>
                 </CardContent>
@@ -630,7 +773,7 @@ export const EventsPage = () => {
                       }}
                     />
                   </div>
-                  {!eventId && (
+                  {(!eventId || isEditMode) && (
                     <>
                       <input
                         type="file"
@@ -726,9 +869,6 @@ export const EventsPage = () => {
               </Card>
               {!eventId && (
                 <div className="flex flex-col sm:flex-row justify-end gap-2">
-                  <Button variant="outline" disabled={isSaving} size="sm" className="w-full sm:w-auto bg-transparent">
-                    Discard Changes
-                  </Button>
                   <Button onClick={handleSaveEvent} disabled={isSaving} size="sm" className="w-full sm:w-auto">
                     {isSaving ? (
                       <>
@@ -742,6 +882,31 @@ export const EventsPage = () => {
                       </>
                     ) : (
                       "Save Event"
+                    )}
+                  </Button>
+                </div>
+              )}
+              {eventId && isEditMode && (
+                <div className="flex flex-col sm:flex-row justify-end gap-2">
+                  <Button variant="outline" onClick={handleCancelEdit} disabled={isSaving} size="sm" className="w-full sm:w-auto bg-transparent">
+                    Cancel Changes
+                  </Button>
+                  <Button onClick={handleUpdateEvent} disabled={isSaving} size="sm" className="w-full sm:w-auto">
+                    {isSaving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Updating...
+                      </>
+                    ) : saveStatus === "saved" ? (
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Updated
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Update Event
+                      </>
                     )}
                   </Button>
                 </div>

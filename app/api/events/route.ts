@@ -61,6 +61,70 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PUT(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const eventId = searchParams.get('id')
+
+    if (!eventId) {
+      return NextResponse.json(
+        { error: 'Event ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const body = await request.json()
+    const { title, description, date, time, location, image_url } = body
+
+    // Validate required fields
+    if (!title || !date) {
+      return NextResponse.json(
+        { error: 'Missing required fields: title and date are required' },
+        { status: 400 }
+      )
+    }
+
+    // Update event in database
+    const { data: event, error } = await supabase
+      .from('events')
+      .update({
+        title,
+        description,
+        date,
+        time,
+        location,
+        image_url,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', eventId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Database error:', error)
+      return NextResponse.json(
+        { error: 'Failed to update event' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(
+      {
+        message: 'Event updated successfully',
+        event
+      },
+      { status: 200 }
+    )
+
+  } catch (error) {
+    console.error('API error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)

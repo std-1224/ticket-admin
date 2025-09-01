@@ -21,7 +21,7 @@ interface AppSidebarProps {
 export function AppSidebar({ activePage, setActivePage }: AppSidebarProps) {
   const menuItems = [
     { id: "Dashboard", label: "Dashboard", icon: Home },
-    { id: "Events", label: "Event", icon: CalendarDays },
+    // { id: "Events", label: "Event", icon: CalendarDays },
     { id: "My Events", label: "All Events", icon: CalendarDays },
     { id: "Scanner", label: "Scanner", icon: QrCode },
     { id: "Attendees", label: "Attendees", icon: Users },
