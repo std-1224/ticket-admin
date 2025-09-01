@@ -72,7 +72,7 @@ export class AttendeesAPI {
       let purchasesData: any[] = []
       if (purchaserIds.length > 0) {
         const { data: purchases } = await supabase
-          .from('purchases')
+          .from('orders')
           .select('*')
           .eq('event_id', eventId)
           .in('user_id', purchaserIds)
@@ -136,7 +136,7 @@ export class AttendeesAPI {
     try {
       // First, get all purchases for the event
       let purchasesQuery = supabase
-        .from('purchases')
+        .from('orders')
         .select(`
           id,
           user_id,
@@ -165,7 +165,7 @@ export class AttendeesAPI {
 
       // Get total count
       const { count } = await supabase
-        .from('purchases')
+        .from('orders')
         .select('id', { count: 'exact', head: true })
         .eq('event_id', eventId)
 

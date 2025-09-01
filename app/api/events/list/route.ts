@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         try {
           // Get total purchases for this event
           const { count: purchaseCount } = await supabase
-            .from('purchases')
+            .from('orders')
             .select('id', { count: 'exact', head: true })
             .eq('event_id', event.id)
 
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
     try {
       // Get total revenue across all events
       const { data: revenueData } = await supabase
-        .from('purchases')
+        .from('orders')
         .select('total_price')
         .eq('status', 'paid')
 
