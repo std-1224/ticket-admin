@@ -128,7 +128,7 @@ export const OverviewPage = () => {
           </div>
           <div className="flex items-center gap-2">
             <Ticket className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate">{stats?.totalTickets || 0} Tickets Sold</span>
+            <span className="truncate">{stats?.totalTickets || 0} Total Tickets Available</span>
           </div>
           <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 flex-shrink-0" />
@@ -150,13 +150,13 @@ export const OverviewPage = () => {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-            <CardTitle className="text-xs sm:text-sm font-medium">Tickets Sold</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium">Total Tickets Available</CardTitle>
             <Ticket className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-lg sm:text-2xl font-bold">{(stats?.totalTickets || 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              From {stats?.totalPurchases || 0} purchases
+              Across all ticket types
             </p>
           </CardContent>
         </Card>
@@ -233,7 +233,7 @@ export const OverviewPage = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-medium">{event.ticket_count} tickets</div>
+                    <div className="text-sm font-medium">{event.ticket_count} tickets available</div>
                     <div className="text-xs text-muted-foreground">{event.purchase_count} purchases</div>
                   </div>
                 </div>

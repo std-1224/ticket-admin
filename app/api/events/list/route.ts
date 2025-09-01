@@ -56,16 +56,18 @@ export async function GET(request: NextRequest) {
             .select('id', { count: 'exact', head: true })
             .eq('event_id', event.id)
 
-          // Get total tickets for this event
-          const { count: ticketCount } = await supabase
-            .from('tickets')
-            .select('id', { count: 'exact', head: true })
+          // Get total ticket capacity from ticket_types for this event
+          const { data: ticketTypes, error: ticketTypesError } = await supabase
+            .from('ticket_types')
+            .select('total_quantity')
             .eq('event_id', event.id)
+
+          let ticketCount = ticketTypes?.length || 0
 
           return {
             ...event,
             purchase_count: purchaseCount || 0,
-            ticket_count: ticketCount || 0
+            ticket_count: ticketCount
           }
         } catch (error) {
           console.error(`Error getting counts for event ${event.id}:`, error)
