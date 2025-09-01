@@ -10,7 +10,7 @@ export interface ScanResult {
     ticket_type?: string
     price_paid?: number
     purchaser_id?: string
-    purchased_at?: string
+    created_at?: string
     status: string
     scanned_at?: string
   } | null
@@ -27,7 +27,7 @@ export interface ScanHistoryItem {
     qr_code: string
     status: string
     price_paid: number
-    purchased_at: string
+    created_at: string
     ticket_type?: string
     ticket_description?: string
     event_title?: string

@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         qr_code: scan.tickets.qr_code,
         status: scan.tickets.status,
         price_paid: scan.tickets.price_paid,
-        purchased_at: scan.tickets.purchased_at,
+        created_at: scan.tickets.created_at,
         ticket_type: scan.tickets.ticket_types?.name,
         ticket_description: scan.tickets.ticket_types?.description,
         event_title: scan.tickets.events?.title,

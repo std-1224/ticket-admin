@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
           purchaser_id,
           qr_code,
           status,
-          purchased_at,
+          created_at,
           price_paid,
           events(
             id,
@@ -210,7 +210,7 @@ export async function GET(request: NextRequest) {
             `"${ticket?.status || ''}"`,
             `"${ticket?.qr_code || ''}"`,
             `"${ticket?.price_paid || ''}"`,
-            `"${ticket?.purchased_at || ''}"`,
+            `"${ticket?.created_at || ''}"`,
             `"${scan ? 'Checked In' : 'Not Checked In'}"`,
             `"${scan?.scanned_at || ''}"`
           ]

@@ -28,7 +28,7 @@ export class AttendeesAPI {
             purchaser_id,
             qr_code,
             status,
-            purchased_at,
+            created_at,
             price_paid
           ),
           scans(
@@ -103,7 +103,7 @@ export class AttendeesAPI {
           created_at: attendee.created_at,
           tickets_count: 1, // Each attendee record represents one ticket
           payment_status: purchase?.status || 'pending',
-          purchase_date: purchase?.purchased_at || ticket?.purchased_at || attendee.created_at,
+          purchase_date: purchase?.created_at || ticket?.created_at || attendee.created_at,
           check_in_status: hasCheckedIn ? 'checked_in' : 'not_checked_in',
           total_price: purchase?.total_price || ticket?.price_paid || 0,
           user_id: ticket?.purchaser_id || ''
@@ -143,7 +143,7 @@ export class AttendeesAPI {
           event_id,
           total_price,
           status,
-          purchased_at,
+          created_at,
           payment_method,
           users!user_id(
             id,
@@ -250,10 +250,10 @@ export class AttendeesAPI {
           ticket_id: tickets[0]?.id || null,
           name: firstAttendee?.name || user?.name || null,
           email: firstAttendee?.email || user?.email || null,
-          created_at: purchase.purchased_at,
+          created_at: purchase.created_at,
           tickets_count: tickets.length,
           payment_status: purchase.status,
-          purchase_date: purchase.purchased_at,
+          purchase_date: purchase.created_at,
           check_in_status: hasCheckedIn ? 'checked_in' : 'not_checked_in',
           total_price: purchase.total_price,
           user_id: purchase.user_id
@@ -351,14 +351,14 @@ export class AttendeesAPI {
             purchase_id,
             qr_code,
             status,
-            purchased_at,
+            created_at,
             price_paid,
             purchases!purchase_id(
               id,
               status,
               total_price,
               payment_method,
-              purchased_at
+              created_at
             )
           ),
           scans(
@@ -390,7 +390,7 @@ export class AttendeesAPI {
         created_at: data.created_at,
         tickets_count: 1,
         payment_status: purchase?.status || 'pending',
-        purchase_date: purchase?.purchased_at || ticket?.purchased_at || data.created_at,
+        purchase_date: purchase?.created_at || ticket?.created_at || data.created_at,
         check_in_status: hasCheckedIn ? 'checked_in' : 'not_checked_in',
         total_price: purchase?.total_price || ticket?.price_paid || 0,
         user_id: ticket?.user_id || ''

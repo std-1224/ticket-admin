@@ -24,7 +24,7 @@ interface AttendeeData {
     purchaser_id: string
     qr_code: string
     status: 'paid' | 'pending' | 'failed'
-    purchased_at: string
+    created_at: string
     price_paid: number
     events: {
       id: string

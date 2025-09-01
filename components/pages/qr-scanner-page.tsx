@@ -725,19 +725,19 @@ export const QRScannerPage = () => {
                           <span className="text-muted-foreground">Ticket ID:</span>
                           <span className="font-mono text-xs">{scanResult.ticket.id.slice(0, 8)}...</span>
                         </div>
-                        {scanResult.ticket.purchased_at && (
+                        {scanResult.ticket.created_at && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Purchased:</span>
                             <span className="font-medium">
-                              {new Date(scanResult.ticket.purchased_at).toLocaleDateString()}
+                              {new Date(scanResult.ticket.created_at).toLocaleDateString()}
                             </span>
                           </div>
                         )}
-                        {scanResult.ticket.purchased_at && (
+                        {scanResult.ticket.created_at && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Purchase Time:</span>
                             <span className="font-medium">
-                              {new Date(scanResult.ticket.purchased_at).toLocaleTimeString()}
+                              {new Date(scanResult.ticket.created_at).toLocaleTimeString()}
                             </span>
                           </div>
                         )}

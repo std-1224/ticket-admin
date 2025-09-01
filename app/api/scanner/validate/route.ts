@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
           purchaser_id: ticket.purchaser_id,
           user_name: ticket.users?.name,
           user_email: ticket.users?.email,
-          purchased_at: ticket.purchased_at,
+          created_at: ticket.created_at,
           price_paid: ticket.price_paid
         }
       })
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
           purchaser_id: ticket.purchaser_id,
           user_name: ticket.users?.name,
           user_email: ticket.users?.email,
-          purchased_at: ticket.purchased_at,
+          created_at: ticket.created_at,
           price_paid: ticket.price_paid
         }
       })
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
         ticket_type: ticket.ticket_types?.name,
         price_paid: ticket.price_paid,
         purchaser_id: ticket.purchaser_id,
-        purchased_at: ticket.purchased_at,
+        created_at: ticket.created_at,
         status: ticket.status,
         user_name: ticket.users?.name,
         user_email: ticket.users?.email
