@@ -68,7 +68,7 @@ export function MyEventsContent() {
           try {
             const { data: ticketTypes, error: ticketError } = await supabase
               .from('ticket_types')
-              .select('id, name, price, quantity, combo, description, created_at')
+              .select('id, name, price, total_quantity, combo, description, created_at')
               .eq('event_id', event.id)
 
             // If ticket_types table doesn't exist or there's an error, just return event without tickets
@@ -245,8 +245,11 @@ export function MyEventsContent() {
                         <Users className="h-4 w-4" />
                         <span className="text-xs">{event.total_tickets_sold || 0} tickets sold</span>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {event.ticket_types?.length || 0} ticket types
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <CalendarDays className="h-4 w-4" />
+                        <span className="text-xs font-medium">
+                          {event.ticket_types?.length || 0} ticket types
+                        </span>
                       </div>
                     </div>
 
