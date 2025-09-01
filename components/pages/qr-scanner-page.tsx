@@ -787,7 +787,7 @@ export const QRScannerPage = () => {
                               'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({
-                              ticket_id: scanResult.ticket?.id,
+                              order_item_id: scanResult.ticket?.id,
                               scanner_id: scannerId
                             })
                           })
@@ -843,7 +843,7 @@ export const QRScannerPage = () => {
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-lg sm:text-xl">Scan History</CardTitle>
-          <CardDescription className="text-sm">Record of the latest scanned tickets.</CardDescription>
+          <CardDescription className="text-sm">Record of the latest scanned order_items.</CardDescription>
         </CardHeader>
         <CardContent>
           {scanHistory && scanHistory.length === 0 ? (

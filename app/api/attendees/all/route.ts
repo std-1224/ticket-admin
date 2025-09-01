@@ -36,11 +36,11 @@ export async function GET(request: NextRequest) {
       .from('attendees')
       .select(`
         id,
-        ticket_id,
+        order_item_id,
         name,
         email,
         created_at,
-        tickets!inner(
+        order_items!inner(
           id,
           event_id,
           purchaser_id,
@@ -67,13 +67,13 @@ export async function GET(request: NextRequest) {
 
     // Apply payment status filter
     if (paymentStatus && paymentStatus !== 'all') {
-      query = query.eq('tickets.status', paymentStatus)
+      query = query.eq('order_items.status', paymentStatus)
     }
 
     // Get total count for pagination (apply same filters for accurate count)
     let countQuery = supabaseAdmin
       .from('attendees')
-      .select('id, tickets!inner(id)', { count: 'exact', head: true })
+      .select('id, order_items!inner(id)', { count: 'exact', head: true })
 
     // Apply same filters to count query
     if (search && search.trim()) {
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       countQuery = countQuery.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
     }
     if (paymentStatus && paymentStatus !== 'all') {
-      countQuery = countQuery.eq('tickets.status', paymentStatus)
+      countQuery = countQuery.eq('order_items.status', paymentStatus)
     }
 
     const { count } = await countQuery
@@ -117,32 +117,32 @@ export async function GET(request: NextRequest) {
     // Get scan data separately for all attendees
     let scansData: any[] = []
     if (attendees && attendees.length > 0) {
-      const ticketIds = attendees.map((a: any) => a.ticket_id).filter(Boolean)
+      const ticketIds = attendees.map((a: any) => a.order_item_id).filter(Boolean)
 
       if (ticketIds.length > 0) {
         const { data: scans } = await supabaseAdmin
           .from('scans')
-          .select('id, ticket_id, status, scanned_at')
-          .in('ticket_id', ticketIds)
+          .select('id, order_item_id, status, scanned_at')
+          .in('order_item_id', ticketIds)
           .eq('status', 'success')
 
         scansData = scans || []
       }
     }
 
-    // Create a map of ticket_id to scans
+    // Create a map of order_item_id to scans
     const scansByTicket = new Map<string, any[]>()
     scansData.forEach(scan => {
-      if (!scansByTicket.has(scan.ticket_id)) {
-        scansByTicket.set(scan.ticket_id, [])
+      if (!scansByTicket.has(scan.order_item_id)) {
+        scansByTicket.set(scan.order_item_id, [])
       }
-      scansByTicket.get(scan.ticket_id)!.push(scan)
+      scansByTicket.get(scan.order_item_id)!.push(scan)
     })
 
     // Add scan data to attendees
     const attendeesWithScans = attendees?.map(attendee => ({
       ...attendee,
-      scans: scansByTicket.get(attendee.ticket_id) || []
+      scans: scansByTicket.get(attendee.order_item_id) || []
     })) || []
 
     // Apply check-in status filter after getting scan data

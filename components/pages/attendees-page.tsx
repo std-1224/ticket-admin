@@ -16,7 +16,7 @@ interface AttendeeData {
   id: string
   name: string
   email: string
-  ticket_id: string
+  order_item_id: string
   created_at: string
   tickets: {
     id: string
@@ -36,7 +36,7 @@ interface AttendeeData {
   }
   scans: Array<{
     id: string
-    ticket_id: string
+    order_item_id: string
     status: string
     scanned_at: string
   }>

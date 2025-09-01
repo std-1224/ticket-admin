@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Filter by event if provided
     if (eventId) {
-      query = query.eq('tickets.event_id', eventId)
+      query = query.eq('order_items.event_id', eventId)
     }
 
     // Note: Removed scanner filtering - show ALL scan history regardless of scanner
@@ -59,17 +59,17 @@ export async function GET(request: NextRequest) {
       scanner_name: scan.scanned_by_user?.name || 'Unknown',
       scanner_email: scan.scanned_by_user?.email,
       ticket: scan.tickets ? {
-        id: scan.tickets.id,
-        qr_code: scan.tickets.qr_code,
-        status: scan.tickets.status,
-        price_paid: scan.tickets.price_paid,
-        created_at: scan.tickets.created_at,
-        ticket_type: scan.tickets.ticket_types?.name,
-        ticket_description: scan.tickets.ticket_types?.description,
-        event_title: scan.tickets.events?.title,
-        event_date: scan.tickets.events?.date,
-        event_time: scan.tickets.events?.time,
-        event_location: scan.tickets.events?.location
+        id: scan.order_items.id,
+        qr_code: scan.order_items.qr_code,
+        status: scan.order_items.status,
+        price_paid: scan.order_items.price_paid,
+        created_at: scan.order_items.created_at,
+        ticket_type: scan.order_items.ticket_types?.name,
+        ticket_description: scan.order_items.ticket_types?.description,
+        event_title: scan.order_items.events?.title,
+        event_date: scan.order_items.events?.date,
+        event_time: scan.order_items.events?.time,
+        event_location: scan.order_items.events?.location
       } : null
     })) || []
 
@@ -94,9 +94,9 @@ export async function POST(request: NextRequest) {
     console.log("📝 Creating scan record")
     
     const body = await request.json()
-    const { ticket_id, scanned_by, status } = body
+    const { order_item_id, scanned_by, status } = body
 
-    console.log("📝 Scan data:", { ticket_id, scanned_by, status })
+    console.log("📝 Scan data:", { order_item_id, scanned_by, status })
 
     if (!scanned_by || !status) {
       return NextResponse.json(
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     const { data: scan, error } = await supabase
       .from('scans')
       .insert({
-        ticket_id,
+        order_item_id,
         scanned_by,
         status
       })

@@ -9,9 +9,9 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { ticket_id, scanner_id } = body
+    const { order_item_id, scanner_id } = body
 
-    if (!ticket_id || !scanner_id) {
+    if (!order_item_id || !scanner_id) {
       return NextResponse.json(
         { error: 'Ticket ID and scanner ID are required' },
         { status: 400 }
@@ -35,9 +35,9 @@ export async function POST(request: NextRequest) {
 
     // Get the ticket
     const { data: ticket, error: ticketError } = await supabase
-      .from('tickets')
+      .from("order_items")
       .select('id, purchaser_id')
-      .eq('id', ticket_id)
+      .eq('id', order_item_id)
       .single()
 
     if (ticketError || !ticket) {
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const { data: validScan, error: scanError } = await supabase
       .from('scans')
       .select('id')
-      .eq('ticket_id', ticket_id)
+      .eq('order_item_id', order_item_id)
       .eq('status', 'valid')
       .order('scanned_at', { ascending: false })
       .limit(1)

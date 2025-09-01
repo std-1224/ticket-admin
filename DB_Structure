@@ -51,7 +51,7 @@ CREATE TABLE tickets (
 -- 5. Attendees table (optional)
 CREATE TABLE attendees (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    ticket_id UUID NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    order_item_id UUID NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     email TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -60,7 +60,7 @@ CREATE TABLE attendees (
 -- 6. Scans table
 CREATE TABLE scans (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    ticket_id UUID NOT NULL REFERENCES tickets(id),
+    order_item_id UUID NOT NULL REFERENCES tickets(id),
     scanned_by UUID NOT NULL REFERENCES users(id),
     scanned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     status TEXT NOT NULL CHECK (status IN ('valid', 'used', 'invalid'))
@@ -90,8 +90,8 @@ CREATE INDEX idx_tickets_purchaser_id ON tickets(purchaser_id);
 CREATE INDEX idx_tickets_event_id ON tickets(event_id);
 CREATE INDEX idx_tickets_status ON tickets(status);
 CREATE INDEX idx_tickets_qr_code ON tickets(qr_code);
-CREATE INDEX idx_attendees_ticket_id ON attendees(ticket_id);
-CREATE INDEX idx_scans_ticket_id ON scans(ticket_id);
+CREATE INDEX idx_attendees_order_item_id ON attendees(order_item_id);
+CREATE INDEX idx_scans_order_item_id ON scans(order_item_id);
 CREATE INDEX idx_scans_scanned_by ON scans(scanned_by);
 CREATE INDEX idx_scans_scanned_at ON scans(scanned_at);
 
@@ -196,13 +196,13 @@ CREATE POLICY "Admins and scanners can update tickets" ON tickets
 -- Attendees policies
 CREATE POLICY "Users can view attendees for their tickets" ON attendees
     FOR SELECT USING (
-        EXISTS (SELECT 1 FROM tickets WHERE id = ticket_id AND purchaser_id = auth.uid()) OR
+        EXISTS (SELECT 1 FROM tickets WHERE id = order_item_id AND purchaser_id = auth.uid()) OR
         EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role IN ('admin', 'scanner'))
     );
 
 CREATE POLICY "Users can manage attendees for their tickets" ON attendees
     FOR ALL USING (
-        EXISTS (SELECT 1 FROM tickets WHERE id = ticket_id AND purchaser_id = auth.uid()) OR
+        EXISTS (SELECT 1 FROM tickets WHERE id = order_item_id AND purchaser_id = auth.uid()) OR
         EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
     );
 
@@ -249,7 +249,7 @@ $$ language 'plpgsql';
 -- Function to validate a ticket by QR code
 CREATE OR REPLACE FUNCTION validate_ticket(qr_code_input TEXT, scanner_id UUID)
 RETURNS TABLE(
-    ticket_id UUID,
+    order_item_id UUID,
     event_title TEXT,
     attendee_name TEXT,
     status TEXT,
@@ -272,7 +272,7 @@ BEGIN
     SELECT * INTO event_record FROM events WHERE id = ticket_record.event_id;
     
     -- Get attendee details (if exists)
-    SELECT * INTO attendee_record FROM attendees WHERE ticket_id = ticket_record.id LIMIT 1;
+    SELECT * INTO attendee_record FROM attendees WHERE order_item_id = ticket_record.id LIMIT 1;
     
     -- Check ticket status
     IF ticket_record.status = 'validated' THEN
@@ -299,7 +299,7 @@ BEGIN
     UPDATE tickets SET status = 'validated', scanned_at = NOW() WHERE id = ticket_record.id;
     
     -- Record the scan
-    INSERT INTO scans (ticket_id, scanned_by, status) VALUES (ticket_record.id, scanner_id, 'valid');
+    INSERT INTO scans (order_item_id, scanned_by, status) VALUES (ticket_record.id, scanner_id, 'valid');
     
     RETURN QUERY SELECT 
         ticket_record.id,
@@ -337,7 +337,7 @@ INSERT INTO tickets (ticket_type_id, purchaser_id, event_id, status, price_paid)
 ((SELECT id FROM ticket_types WHERE name = 'VIP Pass'), (SELECT id FROM users WHERE email = 'jane@example.com'), (SELECT id FROM events WHERE title = 'Summer Music Festival'), 'paid', 150.00);
 
 -- Insert sample attendees
-INSERT INTO attendees (ticket_id, name, email) VALUES 
+INSERT INTO attendees (order_item_id, name, email) VALUES 
 ((SELECT id FROM tickets WHERE purchaser_id = (SELECT id FROM users WHERE email = 'john@example.com') LIMIT 1), 'John Buyer', 'john@example.com'),
 ((SELECT id FROM tickets WHERE purchaser_id = (SELECT id FROM users WHERE email = 'jane@example.com') LIMIT 1), 'Jane Buyer', 'jane@example.com');
 */

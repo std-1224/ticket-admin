@@ -1,6 +1,6 @@
 export interface Attendee {
   id: string
-  ticket_id: string | null
+  order_item_id: string | null
   name: string | null
   email: string | null
   created_at: string
@@ -8,7 +8,7 @@ export interface Attendee {
 
 export interface AttendeeWithPurchaseInfo {
   id: string
-  ticket_id: string | null
+  order_item_id: string | null
   name: string | null
   email: string | null
   created_at: string

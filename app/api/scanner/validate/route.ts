@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     // Find the ticket by QR code with user information
     const { data: ticket, error: ticketError } = await supabase
-      .from('tickets')
+      .from("order_items")
       .select(`
         *,
         ticket_types(*),
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
         if (scannerUser) {
           await supabase.from('scans').insert({
-            ticket_id: null, // No ticket found
+            order_item_id: null, // No ticket found
             scanned_by: scanner_id,
             status: 'invalid'
           })
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
 
         if (scannerUser) {
           await supabase.from('scans').insert({
-            ticket_id: ticket.id,
+            order_item_id: ticket.id,
             scanned_by: scanner_id,
             status: 'invalid'
           })
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
     const { data: previousScans, error: scanError } = await supabase
       .from('scans')
       .select('*')
-      .eq('ticket_id', ticket.id)
+      .eq('order_item_id', ticket.id)
       .eq('status', 'valid')
       .order('scanned_at', { ascending: false })
 
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
 
       // Record this duplicate scan attempt
       await supabase.from('scans').insert({
-        ticket_id: ticket.id,
+        order_item_id: ticket.id,
         scanned_by: ticket.purchaser_id, // Use purchaser_id as temporary scanner ID
         status: 'duplicate'
       })
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
 
         if (scannerUser) {
           await supabase.from('scans').insert({
-            ticket_id: ticket.id,
+            order_item_id: ticket.id,
             scanned_by: scanner_id,
             status: 'invalid'
           })
@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
 
     // Record successful scan in scans table
     const { error: scanInsertError } = await supabase.from('scans').insert({
-      ticket_id: ticket.id,
+      order_item_id: ticket.id,
       scanned_by: scanner_id,
       status: 'valid'
     })

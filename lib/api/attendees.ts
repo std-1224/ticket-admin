@@ -18,11 +18,11 @@ export class AttendeesAPI {
         .from('attendees')
         .select(`
           id,
-          ticket_id,
+          order_item_id,
           name,
           email,
           created_at,
-          tickets!inner(
+          order_items!inner(
             id,
             event_id,
             purchaser_id,
@@ -37,7 +37,7 @@ export class AttendeesAPI {
             scanned_at
           )
         `)
-        .eq('tickets.event_id', eventId)
+        .eq('order_items.event_id', eventId)
 
       // Apply search filter
       if (filters.search) {
@@ -53,7 +53,7 @@ export class AttendeesAPI {
       const { count } = await supabase
         .from('attendees')
         .select('id', { count: 'exact', head: true })
-        .eq('tickets.event_id', eventId)
+        .eq('order_items.event_id', eventId)
 
       // Apply pagination
       const offset = (page - 1) * limit
@@ -97,7 +97,7 @@ export class AttendeesAPI {
 
         return {
           id: attendee.id,
-          ticket_id: attendee.ticket_id,
+          order_item_id: attendee.order_item_id,
           name: attendee.name,
           email: attendee.email,
           created_at: attendee.created_at,
@@ -197,7 +197,7 @@ export class AttendeesAPI {
       // Get all tickets for these purchases
       const userIds = purchasesData.map(p => p.user_id)
       const { data: ticketsData, error: ticketsError } = await supabase
-        .from('tickets')
+        .from("order_items")
         .select(`
           id,
           purchaser_id,
@@ -241,17 +241,17 @@ export class AttendeesAPI {
         const firstAttendee = tickets[0]?.attendees?.[0]
 
         // Check if any ticket has been scanned
-        const hasCheckedIn = tickets.some((ticket: any) =>
+        const hasCheckedIn = order_items.some((ticket: any) =>
           ticket.scans?.some((scan: any) => scan.status === 'used' || scan.status === 'valid')
         )
 
         return {
           id: purchase.id,
-          ticket_id: tickets[0]?.id || null,
+          order_item_id: tickets[0]?.id || null,
           name: firstAttendee?.name || user?.name || null,
           email: firstAttendee?.email || user?.email || null,
           created_at: purchase.created_at,
-          tickets_count: tickets.length,
+          tickets_count: order_items.length,
           payment_status: purchase.status,
           purchase_date: purchase.created_at,
           check_in_status: hasCheckedIn ? 'checked_in' : 'not_checked_in',
@@ -311,7 +311,7 @@ export class AttendeesAPI {
     try {
       const { attendees } = await this.getAttendeesByPurchase(eventId, filters, 1, 1000)
       
-      const headers = ['Name', 'Email', 'Tickets', 'Payment', 'Purchase Date', 'Status']
+      const headers = ['Name', 'Email', "order_items", 'Payment', 'Purchase Date', 'Status']
       const csvRows = [
         headers.join(','),
         ...attendees.map(attendee => [
@@ -340,11 +340,11 @@ export class AttendeesAPI {
         .from('attendees')
         .select(`
           id,
-          ticket_id,
+          order_item_id,
           name,
           email,
           created_at,
-          tickets!inner(
+          order_items!inner(
             id,
             event_id,
             user_id,
@@ -384,7 +384,7 @@ export class AttendeesAPI {
 
       return {
         id: data.id,
-        ticket_id: data.ticket_id,
+        order_item_id: data.order_item_id,
         name: data.name,
         email: data.email,
         created_at: data.created_at,
