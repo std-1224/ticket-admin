@@ -21,7 +21,7 @@ interface AttendeeData {
   tickets: {
     id: string
     event_id: string
-    purchaser_id: string
+    user_id: string
     qr_code: string
     status: 'paid' | 'pending' | 'failed'
     created_at: string
@@ -44,10 +44,10 @@ interface AttendeeData {
 
 interface AttendeeStats {
   total_attendees: number
-  paid_payments: number
-  pending_payments: number
+  complete_payment_amount: number  // Total amount for delivered orders
+  pending_payment_amount: number   // Total amount for pending orders
   failed_payments: number
-  checked_in: number
+  checked_in: number              // Count of delivered orders
   not_checked_in: number
 }
 
@@ -56,6 +56,7 @@ export const AttendeesPage = () => {
   const [stats, setStats] = useState<AttendeeStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchLoading, setSearchLoading] = useState(false)
+  const [statsLoading, setStatsLoading] = useState(true)
   const [error, setError] = useState('')
   const { handleAuthError } = useAuth()
   const [searchTerm, setSearchTerm] = useState("")
@@ -81,8 +82,38 @@ export const AttendeesPage = () => {
   }, [searchTerm, debouncedSearchTerm])
 
   useEffect(() => {
+    fetchDashboardStats()
+  }, []) // Only fetch stats once on component mount
+
+  useEffect(() => {
     fetchAllAttendees()
   }, [debouncedSearchTerm, paymentFilter, statusFilter, currentPage])
+
+  // Separate function to fetch dashboard stats (called only once)
+  const fetchDashboardStats = async () => {
+    try {
+      setStatsLoading(true)
+
+      const response = await fetch('/api/attendees/stats')
+      const result = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 401 || result.code === 'AUTH_ERROR') {
+          handleAuthError({ message: result.error, status: response.status })
+          return
+        }
+        throw new Error(result.error || 'Failed to fetch stats')
+      }
+
+      if (result.success) {
+        setStats(result.data)
+      }
+    } catch (err: any) {
+      console.error('Error fetching dashboard stats:', err)
+    } finally {
+      setStatsLoading(false)
+    }
+  }
 
   const fetchAllAttendees = async () => {
     try {
@@ -120,7 +151,6 @@ export const AttendeesPage = () => {
 
       if (result.success) {
         setAttendees(result.data.attendees || [])
-        setStats(result.data.stats || null)
         setTotalCount(result.data.total_count || 0)
       } else {
         throw new Error(result.error || 'Failed to fetch attendees')
@@ -255,10 +285,12 @@ export const AttendeesPage = () => {
             <CardTitle className="text-sm sm:text-base">Completed Payments</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {statsLoading ? (
               <Skeleton className="h-8 w-16" />
             ) : (
-              <div className="text-lg sm:text-3xl font-bold text-green-400">{stats?.paid_payments || 0}</div>
+              <div className="text-lg sm:text-3xl font-bold text-green-400">
+                ${(stats?.complete_payment_amount || 0).toLocaleString()}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -267,10 +299,12 @@ export const AttendeesPage = () => {
             <CardTitle className="text-sm sm:text-base">Pending Payments</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {statsLoading ? (
               <Skeleton className="h-8 w-16" />
             ) : (
-              <div className="text-lg sm:text-3xl font-bold text-yellow-400">{stats?.pending_payments || 0}</div>
+              <div className="text-lg sm:text-3xl font-bold text-yellow-400">
+                ${(stats?.pending_payment_amount || 0).toLocaleString()}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -279,7 +313,7 @@ export const AttendeesPage = () => {
             <CardTitle className="text-sm sm:text-base">Checked In</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {statsLoading ? (
               <Skeleton className="h-8 w-16" />
             ) : (
               <div className="text-lg sm:text-3xl font-bold text-blue-400">{stats?.checked_in || 0}</div>

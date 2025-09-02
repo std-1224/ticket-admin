@@ -14,7 +14,7 @@ export function MobileBottomNav({ activePage, setActivePage }: MobileBottomNavPr
     { id: "Attendees", label: "Attendees", icon: Users },
     { id: "Scanner", label: "Scanner", icon: QrCode },
     { id: "Analytics", label: "Stats", icon: BarChart2 },
-    { id: "Events", label: "Events", icon: CalendarDays },
+    { id: "my-events", label: "All Events", icon: CalendarDays },
   ]
 
   return (

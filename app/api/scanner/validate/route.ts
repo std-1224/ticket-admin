@@ -9,7 +9,7 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
+
     const { qr_code, scanner_id, event_id } = body
 
     if (!qr_code || !scanner_id) {
@@ -19,184 +19,106 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find the ticket by QR code with user information
-    const { data: ticket, error: ticketError } = await supabase
-      .from("order_items")
-      .select(`
-        *,
-        ticket_types(*),
-        events(*),
-        users!purchaser_id(id, name, email)
-      `)
-      .eq('qr_code', qr_code)
-      .single()
-
-    if (ticketError || !ticket) {
-      // Try to record invalid scan if scanner_id is valid
-      try {
-        const { data: scannerUser } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', scanner_id)
-          .eq('role', 'scanner')
-          .single()
-
-        if (scannerUser) {
-          await supabase.from('scans').insert({
-            order_item_id: null, // No ticket found
-            scanned_by: scanner_id,
-            status: 'invalid'
-          })
-        }
-      } catch (error) {
-        // Ignore scan recording errors for invalid tickets
-      }
-
-      return NextResponse.json({
-        success: false,
-        status: 'invalid',
-        message: 'Ticket not found',
-        ticket: null
-      })
-    }
-
-    // Check if ticket belongs to the event (if event_id is provided)
-    if (event_id && ticket.event_id !== event_id) {
-      // Record invalid scan with proper scanner ID
-      try {
-        const { data: scannerUser } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', scanner_id)
-          .eq('role', 'scanner')
-          .single()
-
-        if (scannerUser) {
-          await supabase.from('scans').insert({
-            order_item_id: ticket.id,
-            scanned_by: scanner_id,
-            status: 'invalid'
-          })
-        }
-      } catch (error) {
-        // Ignore scan recording errors
-      }
-
-      return NextResponse.json({
-        success: false,
-        status: 'invalid',
-        message: 'Ticket is not valid for this event',
-        ticket: {
-          id: ticket.id,
-          event_title: ticket.events?.title,
-          ticket_type: ticket.ticket_types?.name,
-          status: ticket.status,
-          purchaser_id: ticket.purchaser_id,
-          user_name: ticket.users?.name,
-          user_email: ticket.users?.email
-        }
-      })
-    }
-
-    // Check if ticket has been scanned before by looking at scans table
-    const { data: previousScans, error: scanError } = await supabase
-      .from('scans')
-      .select('*')
-      .eq('order_item_id', ticket.id)
-      .eq('status', 'valid')
-      .order('scanned_at', { ascending: false })
-
-    if (previousScans && previousScans.length > 0) {
-
-      // Record this duplicate scan attempt
-      await supabase.from('scans').insert({
-        order_item_id: ticket.id,
-        scanned_by: ticket.purchaser_id, // Use purchaser_id as temporary scanner ID
-        status: 'duplicate'
-      })
-
-      const lastScan = previousScans[0]
-      return NextResponse.json({
-        success: false,
-        status: 'used',
-        message: 'Ticket has already been scanned and used',
-        ticket: {
-          id: ticket.id,
-          event_title: ticket.events?.title,
-          ticket_type: ticket.ticket_types?.name,
-          status: ticket.status,
-          scanned_at: lastScan.scanned_at,
-          scan_count: previousScans.length,
-          purchaser_id: ticket.purchaser_id,
-          user_name: ticket.users?.name,
-          user_email: ticket.users?.email,
-          created_at: ticket.created_at,
-          price_paid: ticket.price_paid
-        }
-      })
-    }
-
-    // Check if ticket is paid (allow 'pending' and 'paid' status)
-    if (ticket.status !== 'paid' && ticket.status !== 'pending') {
-      // Record invalid scan with proper scanner ID
-      try {
-        const { data: scannerUser } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', scanner_id)
-          .eq('role', 'scanner')
-          .single()
-
-        if (scannerUser) {
-          await supabase.from('scans').insert({
-            order_item_id: ticket.id,
-            scanned_by: scanner_id,
-            status: 'invalid'
-          })
-        }
-      } catch (error) {
-        // Ignore scan recording errors
-      }
-
-      return NextResponse.json({
-        success: false,
-        status: 'invalid',
-        message: 'Ticket is not paid or is cancelled',
-        ticket: {
-          id: ticket.id,
-          event_title: ticket.events?.title,
-          ticket_type: ticket.ticket_types?.name,
-          status: ticket.status,
-          purchaser_id: ticket.purchaser_id,
-          user_name: ticket.users?.name,
-          user_email: ticket.users?.email,
-          created_at: ticket.created_at,
-          price_paid: ticket.price_paid
-        }
-      })
-    }
-
-    // Validate that scanner_id is a valid UUID and exists in users table
+    // Validate scanner credentials first
     const { data: scannerUser, error: scannerError } = await supabase
       .from('users')
       .select('id, name, role')
       .eq('id', scanner_id)
-      .eq('role', 'scanner')
       .single()
 
     if (scannerError || !scannerUser) {
-      console.error('❌ Invalid scanner ID:', scanner_id, scannerError)
       return NextResponse.json({
         success: false,
         status: 'invalid',
         message: 'Invalid scanner credentials',
-        ticket: null
+        order: null
       })
     }
 
-    // Record successful scan in scans table
+    // Find the order by QR code
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select('*')
+      .eq('qr_code', qr_code)
+      .single()
+
+    // If order not found - record invalid scan and return
+    if (orderError || !order) {
+      // Record invalid scan - order not found by QR code
+      await supabase.from('scans').insert({
+        order_id: null, // No order found
+        scanned_by: scanner_id,
+        status: 'invalid'
+      })
+
+      return NextResponse.json({
+        success: false,
+        status: 'invalid',
+        message: 'QR code is invalid',
+        order: null
+      })
+    }
+
+    // Check if this order has already been scanned (order_id exists in scans table)
+    const { data: existingScans } = await supabase
+      .from('scans')
+      .select('id')
+      .eq('order_id', order.id)
+      .limit(1)
+
+    if (existingScans && existingScans.length > 0) {
+      // Record this as 'used' scan attempt
+      await supabase.from('scans').insert({
+        order_id: order.id,
+        scanned_by: scanner_id,
+        status: 'used'
+      })
+
+      return NextResponse.json({
+        success: false,
+        status: 'used',
+        message: 'Already in use',
+        order: {
+          id: order.id,
+          event_title: order.events?.title,
+          status: order.status,
+          user_id: order.user_id,
+          user_name: order.users?.name,
+          user_email: order.users?.email,
+          created_at: order.created_at,
+          total_amount: order.total_amount
+        }
+      })
+    }
+
+    // Check if order is paid (not allow 'paid' status only)
+    if (order.status === 'paid') {
+      // Record invalid scan - order not paid
+      await supabase.from('scans').insert({
+        order_id: order.id,
+        scanned_by: scanner_id,
+        status: 'used'
+      })
+
+      return NextResponse.json({
+        success: false,
+        status: 'invalid',
+        message: 'QR code is in Used',
+        order: {
+          id: order.id,
+          event_title: order.events?.title,
+          status: order.status,
+          user_id: order.user_id,
+          user_name: order.users?.name,
+          user_email: order.users?.email,
+          created_at: order.created_at,
+          total_amount: order.total_amount
+        }
+      })
+    }
+    // Record successful scan in scans table and update order status to 'delivered'
     const { error: scanInsertError } = await supabase.from('scans').insert({
-      order_item_id: ticket.id,
+      order_id: order.id,
       scanned_by: scanner_id,
       status: 'valid'
     })
@@ -208,20 +130,30 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Update order status to 'delivered' if scan is valid
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update({ status: 'delivered' })
+      .eq('id', order.id)
+
+    if (updateError) {
+      console.error('Failed to update order status:', updateError)
+      // Don't fail the request, just log the error
+    }
+
     return NextResponse.json({
       success: true,
       status: 'valid',
-      message: 'Ticket validated successfully - Entry granted',
-      ticket: {
-        id: ticket.id,
-        event_title: ticket.events?.title,
-        ticket_type: ticket.ticket_types?.name,
-        price_paid: ticket.price_paid,
-        purchaser_id: ticket.purchaser_id,
-        created_at: ticket.created_at,
-        status: ticket.status,
-        user_name: ticket.users?.name,
-        user_email: ticket.users?.email
+      message: 'QR code is valid',
+      order: {
+        id: order.id,
+        event_title: order.events?.title,
+        total_amount: order.total_amount,
+        user_id: order.user_id,
+        created_at: order.created_at,
+        status: 'delivered', // Show the updated status
+        user_name: order.users?.name,
+        user_email: order.users?.email
       }
     })
 

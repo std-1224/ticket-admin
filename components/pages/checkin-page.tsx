@@ -5,12 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { useEffect, useState } from "react"
+import { supabase } from "@/lib/supabase"
 
-const overviewStats = {
-  ticketsSold: 4892,
-  registeredUsers: 5230,
-  checkIns: 1204,
-  revenue: 73380,
+interface CheckInStats {
+  totalCheckedIn: number
+  pendingCheckIn: number
+  totalOrders: number
 }
 
 const checkInData = [
@@ -20,8 +21,84 @@ const checkInData = [
 ]
 
 export const CheckInPage = () => {
-  const checkInPercentage = Math.round((overviewStats.checkIns / overviewStats.ticketsSold) * 100)
-  const pendingCheckIn = overviewStats.ticketsSold - overviewStats.checkIns
+  const [checkInStats, setCheckInStats] = useState<CheckInStats>({
+    totalCheckedIn: 0,
+    pendingCheckIn: 0,
+    totalOrders: 0
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchCheckInStats = async () => {
+
+      try {
+        // Get orders with delivered status (checked in)
+        const { data: deliveredOrders, error: deliveredError } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('status', 'delivered')
+
+        if (deliveredError) {
+          console.error('Error fetching delivered orders:', deliveredError)
+          return
+        }
+
+        // Get orders with pending status (pending check-in)
+        const { data: pendingOrders, error: pendingError } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('status', 'pending')
+
+        if (pendingError) {
+          console.error('Error fetching pending orders:', pendingError)
+          return
+        }
+
+        // Get total orders (delivered + pending + paid)
+        const { data: allOrders, error: allError } = await supabase
+          .from('orders')
+          .select('id')
+          .in('status', ['delivered', 'pending', 'paid'])
+
+        if (allError) {
+          console.error('Error fetching all orders:', allError)
+          return
+        }
+
+        const totalCheckedIn = deliveredOrders?.length || 0
+        const pendingCheckIn = pendingOrders?.length || 0
+        const totalOrders = allOrders?.length || 0
+
+        setCheckInStats({
+          totalCheckedIn,
+          pendingCheckIn,
+          totalOrders
+        })
+      } catch (error) {
+        console.error('Error fetching check-in stats:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCheckInStats()
+  }, [supabase])
+
+  const checkInPercentage = checkInStats.totalOrders > 0
+    ? Math.round((checkInStats.totalCheckedIn / checkInStats.totalOrders) * 100)
+    : 0
+
+  if (loading) {
+    return (
+      <div className="space-y-3 sm:space-y-6 pb-20 md:pb-0">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">Loading check-in data...</div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-3 sm:space-y-6 pb-20 md:pb-0">
@@ -32,7 +109,7 @@ export const CheckInPage = () => {
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
             <span className="text-sm text-muted-foreground">
-              {overviewStats.checkIns} of {overviewStats.ticketsSold} attendees checked in
+              {checkInStats.totalCheckedIn} of {checkInStats.totalOrders} attendees checked in
             </span>
             <span className="font-bold text-primary text-lg">{checkInPercentage}%</span>
           </div>
@@ -45,7 +122,7 @@ export const CheckInPage = () => {
             <CardTitle className="text-sm sm:text-base">Total Checked In</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-lg sm:text-3xl font-bold">{overviewStats.checkIns}</div>
+            <div className="text-lg sm:text-3xl font-bold">{checkInStats.totalCheckedIn}</div>
           </CardContent>
         </Card>
         <Card>
@@ -53,7 +130,7 @@ export const CheckInPage = () => {
             <CardTitle className="text-sm sm:text-base">Pending Check-in</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-lg sm:text-3xl font-bold">{pendingCheckIn}</div>
+            <div className="text-lg sm:text-3xl font-bold">{checkInStats.pendingCheckIn}</div>
           </CardContent>
         </Card>
       </div>

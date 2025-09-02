@@ -9,11 +9,11 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { order_item_id, scanner_id } = body
+    const { order_id, scanner_id } = body
 
-    if (!order_item_id || !scanner_id) {
+    if (!order_id || !scanner_id) {
       return NextResponse.json(
-        { error: 'Ticket ID and scanner ID are required' },
+        { error: 'Order ID and scanner ID are required' },
         { status: 400 }
       )
     }
@@ -33,25 +33,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get the ticket
-    const { data: ticket, error: ticketError } = await supabase
-      .from("order_items")
-      .select('id, purchaser_id')
-      .eq('id', order_item_id)
+    // Get the order
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select('id, status')
+      .eq('id', order_id)
       .single()
 
-    if (ticketError || !ticket) {
+    if (orderError || !order) {
       return NextResponse.json(
-        { error: 'Ticket not found' },
+        { error: 'Order not found' },
         { status: 404 }
       )
     }
 
-    // Find the most recent 'valid' scan for this ticket
+    // Find the most recent 'valid' scan for this order
     const { data: validScan, error: scanError } = await supabase
       .from('scans')
       .select('id')
-      .eq('order_item_id', order_item_id)
+      .eq('order_id', order_id)
       .eq('status', 'valid')
       .order('scanned_at', { ascending: false })
       .limit(1)

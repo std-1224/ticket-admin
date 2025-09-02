@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
       const { data: revenueData } = await supabase
         .from('orders')
         .select('total_price')
-        .eq('status', 'paid')
+        .eq('status', 'delivered')
 
       const totalRevenue = revenueData?.reduce((sum, purchase) => sum + (purchase.total_price || 0), 0) || 0
 
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
       const { count: totalCheckIns } = await supabase
         .from('scans')
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'success')
+        .eq('status', 'valid')
 
       aggregatedStats.totalRevenue = totalRevenue
       aggregatedStats.totalCheckIns = totalCheckIns || 0

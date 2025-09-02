@@ -43,26 +43,31 @@ interface Event {
   ticket_count: number
 }
 
-const salesData = [
-  { date: "Oct 1", sales: 22 },
-  { date: "Oct 2", sales: 45 },
-  { date: "Oct 3", sales: 78 },
-  { date: "Oct 4", sales: 60 },
-  { date: "Oct 5", sales: 110 },
-  { date: "Oct 6", sales: 95 },
-  { date: "Oct 7", sales: 150 },
-]
+interface SalesDataPoint {
+  date: string
+  fullDate: string
+  sales: number
+  revenue: number
+}
 
 export const OverviewPage = () => {
   const [stats, setStats] = useState<AggregatedStats | null>(null)
   const [events, setEvents] = useState<Event[]>([])
+  const [salesData, setSalesData] = useState<SalesDataPoint[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const { handleAuthError } = useAuth()
 
   useEffect(() => {
-    fetchAllEventsData()
+    fetchAllData()
   }, [])
+
+  const fetchAllData = async () => {
+    await Promise.all([
+      fetchAllEventsData(),
+      fetchSalesData()
+    ])
+  }
 
   const fetchAllEventsData = async () => {
     try {
@@ -95,6 +100,32 @@ export const OverviewPage = () => {
     }
   }
 
+  const fetchSalesData = async () => {
+    try {
+      const response = await fetch('/api/analytics/daily-sales?days=30')
+      const result = await response.json()
+
+      if (!response.ok) {
+        // Check if it's an auth error
+        if (response.status === 401 || result.code === 'AUTH_ERROR') {
+          handleAuthError({ message: result.error, status: response.status })
+          return
+        }
+        throw new Error(result.error || 'Failed to fetch sales data')
+      }
+
+      if (result.success) {
+        setSalesData(result.data || [])
+      } else {
+        throw new Error(result.error || 'Failed to fetch sales data')
+      }
+    } catch (err: any) {
+      console.error('Error fetching sales data:', err)
+      // Don't set error state for sales data, just log it
+      // The chart will show empty if sales data fails
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -108,7 +139,7 @@ export const OverviewPage = () => {
       <div className="text-center py-12">
         <p className="text-destructive mb-4">Error: {error}</p>
         <button
-          onClick={fetchAllEventsData}
+          onClick={fetchAllData}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
         >
           Retry

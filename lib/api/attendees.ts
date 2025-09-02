@@ -25,7 +25,7 @@ export class AttendeesAPI {
           order_items!inner(
             id,
             event_id,
-            purchaser_id,
+            user_id,
             qr_code,
             status,
             created_at,
@@ -67,7 +67,7 @@ export class AttendeesAPI {
 
       // For individual attendees, we need to get purchase info separately
       // Get unique purchaser IDs to fetch purchase information
-      const purchaserIds = [...new Set((attendeesData || []).map((a: any) => a.tickets?.purchaser_id).filter(Boolean))]
+      const purchaserIds = [...new Set((attendeesData || []).map((a: any) => a.tickets?.user_id).filter(Boolean))]
 
       let purchasesData: any[] = []
       if (purchaserIds.length > 0) {
@@ -80,7 +80,7 @@ export class AttendeesAPI {
         purchasesData = purchases || []
       }
 
-      // Create a map of purchaser_id to purchase info
+      // Create a map of user_id to purchase info
       const purchasesByUser = new Map<string, any>()
       purchasesData.forEach(purchase => {
         purchasesByUser.set(purchase.user_id, purchase)
@@ -89,11 +89,7 @@ export class AttendeesAPI {
       // Transform the data to match our interface
       const attendees: AttendeeWithPurchaseInfo[] = (attendeesData || []).map((attendee: any) => {
         const ticket = attendee.tickets
-        const purchase = purchasesByUser.get(ticket?.purchaser_id)
-        const scans = attendee.scans || []
-
-        // Check if user has checked in (has any successful scan)
-        const hasCheckedIn = scans.some((scan: any) => scan.status === 'used' || scan.status === 'valid')
+        const purchase = purchasesByUser.get(ticket?.user_id)
 
         return {
           id: attendee.id,
@@ -102,11 +98,10 @@ export class AttendeesAPI {
           email: attendee.email,
           created_at: attendee.created_at,
           tickets_count: 1, // Each attendee record represents one ticket
-          payment_status: purchase?.status || 'pending',
+          payment_status: purchase?.status || ticket?.status || 'pending',
           purchase_date: purchase?.created_at || ticket?.created_at || attendee.created_at,
-          check_in_status: hasCheckedIn ? 'checked_in' : 'not_checked_in',
           total_price: purchase?.total_price || ticket?.price_paid || 0,
-          user_id: ticket?.purchaser_id || ''
+          user_id: ticket?.user_id || ''
         }
       })
 
@@ -159,7 +154,7 @@ export class AttendeesAPI {
       }
 
       // Apply payment status filter
-      if (filters.payment_status && filters.payment_status !== 'all') {
+      if (filters.payment_status) {
         purchasesQuery = purchasesQuery.eq('status', filters.payment_status)
       }
 
@@ -184,11 +179,10 @@ export class AttendeesAPI {
           attendees: [],
           stats: {
             total_attendees: 0,
-            paid_payments: 0,
-            pending_payments: 0,
-            failed_payments: 0,
-            checked_in: 0,
-            not_checked_in: 0
+            waiting_payment: 0,
+            pending: 0,
+            cancelled: 0,
+            delivered: 0
           },
           total_count: count || 0
         }
@@ -200,7 +194,6 @@ export class AttendeesAPI {
         .from("order_items")
         .select(`
           id,
-          purchaser_id,
           event_id,
           qr_code,
           status,
@@ -216,20 +209,19 @@ export class AttendeesAPI {
           )
         `)
         .eq('event_id', eventId)
-        .in('purchaser_id', userIds)
 
       if (ticketsError) {
         throw new Error(`Failed to fetch tickets: ${ticketsError.message}`)
       }
 
-      // Group tickets by purchaser_id to match with purchases
+      // Group tickets by user_id to match with purchases
       const ticketsByPurchaser = new Map<string, any[]>()
       ;(ticketsData || []).forEach((ticket: any) => {
-        const purchaserId = ticket.purchaser_id
-        if (!ticketsByPurchaser.has(purchaserId)) {
-          ticketsByPurchaser.set(purchaserId, [])
+        const user_id = ticket.user_id
+        if (!ticketsByPurchaser.has(user_id)) {
+          ticketsByPurchaser.set(user_id, [])
         }
-        ticketsByPurchaser.get(purchaserId)!.push(ticket)
+        ticketsByPurchaser.get(user_id)!.push(ticket)
       })
 
       // Transform data to show one row per purchase with ticket count
@@ -240,21 +232,15 @@ export class AttendeesAPI {
         // Get the first attendee from the first ticket (for display purposes)
         const firstAttendee = tickets[0]?.attendees?.[0]
 
-        // Check if any ticket has been scanned
-        const hasCheckedIn = order_items.some((ticket: any) =>
-          ticket.scans?.some((scan: any) => scan.status === 'used' || scan.status === 'valid')
-        )
-
         return {
           id: purchase.id,
           order_item_id: tickets[0]?.id || null,
           name: firstAttendee?.name || user?.name || null,
           email: firstAttendee?.email || user?.email || null,
           created_at: purchase.created_at,
-          tickets_count: order_items.length,
+          tickets_count: tickets.length,
           payment_status: purchase.status,
           purchase_date: purchase.created_at,
-          check_in_status: hasCheckedIn ? 'checked_in' : 'not_checked_in',
           total_price: purchase.total_price,
           user_id: purchase.user_id
         }
@@ -281,25 +267,21 @@ export class AttendeesAPI {
     return attendees.reduce(
       (stats, attendee) => {
         stats.total_attendees++
-        
+
         // Payment status stats
-        if (attendee.payment_status === 'paid') stats.paid_payments++
-        else if (attendee.payment_status === 'pending') stats.pending_payments++
-        else if (attendee.payment_status === 'failed') stats.failed_payments++
-        
-        // Check-in status stats
-        if (attendee.check_in_status === 'checked_in') stats.checked_in++
-        else stats.not_checked_in++
-        
+        if (attendee.payment_status === 'waiting_payment') stats.waiting_payment++
+        else if (attendee.payment_status === 'pending') stats.pending++
+        else if (attendee.payment_status === 'cancelled') stats.cancelled++
+        else if (attendee.payment_status === 'delivered') stats.delivered++
+
         return stats
       },
       {
         total_attendees: 0,
-        paid_payments: 0,
-        pending_payments: 0,
-        failed_payments: 0,
-        checked_in: 0,
-        not_checked_in: 0
+        waiting_payment: 0,
+        pending: 0,
+        cancelled: 0,
+        delivered: 0
       }
     )
   }
@@ -311,7 +293,7 @@ export class AttendeesAPI {
     try {
       const { attendees } = await this.getAttendeesByPurchase(eventId, filters, 1, 1000)
       
-      const headers = ['Name', 'Email', "order_items", 'Payment', 'Purchase Date', 'Status']
+      const headers = ['Name', 'Email', 'Tickets', 'Payment Status', 'Purchase Date']
       const csvRows = [
         headers.join(','),
         ...attendees.map(attendee => [
@@ -319,8 +301,7 @@ export class AttendeesAPI {
           `"${attendee.email || ''}"`,
           attendee.tickets_count,
           attendee.payment_status,
-          `"${new Date(attendee.purchase_date).toLocaleString()}"`,
-          attendee.check_in_status === 'checked_in' ? 'Checked In' : 'Not Checked In'
+          `"${new Date(attendee.purchase_date).toLocaleString()}"`
         ].join(','))
       ]
       
@@ -348,12 +329,12 @@ export class AttendeesAPI {
             id,
             event_id,
             user_id,
-            purchase_id,
+            order_id,
             qr_code,
             status,
             created_at,
             price_paid,
-            purchases!purchase_id(
+            orders!order_id(
               id,
               status,
               total_price,
@@ -376,11 +357,8 @@ export class AttendeesAPI {
 
       if (!data) return null
 
-      const ticket = data.tickets // This is a single object, not an array
-      const purchase = ticket?.purchases // This is the purchase object
-      const scans = data.scans || []
-
-      const hasCheckedIn = scans.some((scan: any) => scan.status === 'used' || scan.status === 'valid')
+      const orderItem = Array.isArray(data.order_items) ? data.order_items[0] : data.order_items
+      const purchase = Array.isArray(orderItem?.purchases) ? orderItem?.purchases[0] : orderItem?.purchases
 
       return {
         id: data.id,
@@ -389,11 +367,10 @@ export class AttendeesAPI {
         email: data.email,
         created_at: data.created_at,
         tickets_count: 1,
-        payment_status: purchase?.status || 'pending',
-        purchase_date: purchase?.created_at || ticket?.created_at || data.created_at,
-        check_in_status: hasCheckedIn ? 'checked_in' : 'not_checked_in',
-        total_price: purchase?.total_price || ticket?.price_paid || 0,
-        user_id: ticket?.user_id || ''
+        payment_status: purchase?.status || orderItem?.status || 'pending',
+        purchase_date: purchase?.created_at || orderItem?.created_at || data.created_at,
+        total_price: purchase?.total_price || orderItem?.price_paid || 0,
+        user_id: orderItem?.user_id || ''
       }
     } catch (error: any) {
       console.error('Error fetching attendee details:', error)

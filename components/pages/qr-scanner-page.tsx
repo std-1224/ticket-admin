@@ -35,6 +35,7 @@ export const QRScannerPage = () => {
     scanResult,
     scanHistory,
     loading,
+    historyLoading,
     validateTicket,
     fetchScanHistory,
     clearScanResult
@@ -99,11 +100,12 @@ export const QRScannerPage = () => {
     }
   }
 
-  // useEffect(() => {
-  //   if (isScanner) {
-  //     fetchScanHistory()
-  //   }
-  // }, [isScanner])
+  // Fetch scan history when component loads
+  useEffect(() => {
+    if (scannerId) {
+      fetchScanHistory()
+    }
+  }, [scannerId]) // Remove fetchScanHistory from dependencies to prevent infinite loop
 
   // Handle QR code scanning from camera (copied from merch-admin)
   const handleQRScan = (result: any) => {
@@ -655,32 +657,28 @@ export const QRScannerPage = () => {
                   </div>
                 </div>
 
-                {/* Detailed Ticket Information */}
-                {scanResult.ticket && (
+                {/* Detailed Order Information */}
+                {scanResult.order && (
                   <div className="space-y-4 text-left">
                     {/* Event Information */}
                     <div className="bg-muted/50 p-4 rounded-lg">
                       <h4 className="font-semibold text-sm text-muted-foreground mb-3 flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        Event Information
+                        Order Information
                       </h4>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Event:</span>
-                          <span className="font-medium text-right">{scanResult.ticket.event_title}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Ticket Type:</span>
-                          <span className="font-medium">{scanResult.ticket.ticket_type}</span>
+                          <span className="font-medium text-right">{scanResult.order.event_title}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Status:</span>
-                          <span className="font-medium capitalize">{scanResult.ticket.status}</span>
+                          <span className="font-medium capitalize">{scanResult.order.status}</span>
                         </div>
-                        {scanResult.ticket.price_paid && (
+                        {scanResult.order.total_amount && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Price Paid:</span>
-                            <span className="font-medium">${scanResult.ticket.price_paid}</span>
+                            <span className="text-muted-foreground">Total Amount:</span>
+                            <span className="font-medium">${scanResult.order.total_amount}</span>
                           </div>
                         )}
                       </div>
@@ -693,22 +691,22 @@ export const QRScannerPage = () => {
                         User Information
                       </h4>
                       <div className="space-y-2 text-sm">
-                        {(scanResult.ticket as any).user_name && (
+                        {scanResult.order.user_name && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Name:</span>
-                            <span className="font-medium">{(scanResult.ticket as any).user_name}</span>
+                            <span className="font-medium">{scanResult.order.user_name}</span>
                           </div>
                         )}
-                        {(scanResult.ticket as any).user_email && (
+                        {scanResult.order.user_email && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Email:</span>
-                            <span className="font-medium">{(scanResult.ticket as any).user_email}</span>
+                            <span className="font-medium">{scanResult.order.user_email}</span>
                           </div>
                         )}
-                        {scanResult.ticket.purchaser_id && (
+                        {scanResult.order.user_id && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">User ID:</span>
-                            <span className="font-mono text-xs">{scanResult.ticket.purchaser_id.slice(0, 8)}...</span>
+                            <span className="font-mono text-xs">{scanResult.order.user_id.slice(0, 8)}...</span>
                           </div>
                         )}
                       </div>
@@ -722,22 +720,22 @@ export const QRScannerPage = () => {
                       </h4>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Ticket ID:</span>
-                          <span className="font-mono text-xs">{scanResult.ticket.id.slice(0, 8)}...</span>
+                          <span className="text-muted-foreground">Order ID:</span>
+                          <span className="font-mono text-xs">{scanResult.order.id.slice(0, 8)}...</span>
                         </div>
-                        {scanResult.ticket.created_at && (
+                        {scanResult.order.created_at && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Purchased:</span>
                             <span className="font-medium">
-                              {new Date(scanResult.ticket.created_at).toLocaleDateString()}
+                              {new Date(scanResult.order.created_at).toLocaleDateString()}
                             </span>
                           </div>
                         )}
-                        {scanResult.ticket.created_at && (
+                        {scanResult.order.created_at && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Purchase Time:</span>
                             <span className="font-medium">
-                              {new Date(scanResult.ticket.created_at).toLocaleTimeString()}
+                              {new Date(scanResult.order.created_at).toLocaleTimeString()}
                             </span>
                           </div>
                         )}
@@ -745,24 +743,24 @@ export const QRScannerPage = () => {
                     </div>
 
                     {/* Scan Information */}
-                    {((scanResult.ticket as any).scan_count || scanResult.ticket.scanned_at) && (
+                    {(scanResult.order.scanned_at) && (
                       <div className="bg-muted/50 p-4 rounded-lg">
                         <h4 className="font-semibold text-sm text-muted-foreground mb-3 flex items-center gap-2">
                           <Hash className="h-4 w-4" />
                           Scan History
                         </h4>
                         <div className="space-y-2 text-sm">
-                          {(scanResult.ticket as any).scan_count && (
+                          {(scanResult.order as any).scan_count && (
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Total Scans:</span>
-                              <span className="font-medium">{(scanResult.ticket as any).scan_count}</span>
+                              <span className="font-medium">{(scanResult.order as any).scan_count}</span>
                             </div>
                           )}
-                          {scanResult.ticket.scanned_at && (
+                          {scanResult.order.scanned_at && (
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Last Scan:</span>
                               <span className="font-medium">
-                                {new Date(scanResult.ticket.scanned_at).toLocaleString()}
+                                {new Date(scanResult.order.scanned_at).toLocaleString()}
                               </span>
                             </div>
                           )}
@@ -787,7 +785,7 @@ export const QRScannerPage = () => {
                               'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({
-                              order_item_id: scanResult.ticket?.id,
+                              order_item_id: scanResult.order?.id,
                               scanner_id: scannerId
                             })
                           })
@@ -846,7 +844,12 @@ export const QRScannerPage = () => {
           <CardDescription className="text-sm">Record of the latest scanned order_items.</CardDescription>
         </CardHeader>
         <CardContent>
-          {scanHistory && scanHistory.length === 0 ? (
+          {historyLoading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Loader2 className="h-12 w-12 mx-auto mb-2 opacity-50 animate-spin" />
+              <p className="text-sm">Loading scan history...</p>
+            </div>
+          ) : scanHistory && scanHistory.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <QrCode className="h-12 w-12 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No scans yet</p>
@@ -857,7 +860,7 @@ export const QRScannerPage = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[120px] text-xs sm:text-sm">Event</TableHead>
-                    <TableHead className="min-w-[100px] text-xs sm:text-sm">Ticket Type</TableHead>
+                    <TableHead className="min-w-[100px] text-xs sm:text-sm">Order</TableHead>
                     <TableHead className="min-w-[80px] text-xs sm:text-sm">Status</TableHead>
                     <TableHead className="min-w-[80px] text-xs sm:text-sm">Time</TableHead>
                     <TableHead className="text-right min-w-[100px] text-xs sm:text-sm">Scanner</TableHead>
@@ -867,10 +870,10 @@ export const QRScannerPage = () => {
                   {scanHistory && scanHistory.map((scan) => (
                     <TableRow key={scan.id}>
                       <TableCell className="font-medium text-xs sm:text-sm">
-                        {scan.ticket?.event_title || 'Unknown Event'}
+                        {scan.order?.event_title || 'Unknown Event'}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs sm:text-sm">
-                        {scan.ticket?.ticket_type || 'Unknown Type'}
+                        {scan.order?.order_number || scan.order?.id?.slice(0, 8) || 'Unknown Order'}
                       </TableCell>
                       <TableCell>
                         <Badge variant={getStatusBadgeVariant(scan.status)} className="text-xs">

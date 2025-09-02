@@ -8,36 +8,18 @@ const supabase = createClient(
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("📋 Scanner history API called")
     
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('eventId')
     const scannerId = searchParams.get('scannerId')
     const limit = parseInt(searchParams.get('limit') || '50')
 
-    console.log("📊 Query params:", { eventId, scannerId, limit })
-
+    // First get scans without joins to avoid relationship issues
     let query = supabase
       .from('scans')
-      .select(`
-        *,
-        tickets(
-          *,
-          ticket_types(name, description),
-          events(title, date, time, location)
-        ),
-        scanned_by_user:users!scanned_by(name, email)
-      `)
+      .select('*')
       .order('scanned_at', { ascending: false })
       .limit(limit)
-
-    // Filter by event if provided
-    if (eventId) {
-      query = query.eq('order_items.event_id', eventId)
-    }
-
-    // Note: Removed scanner filtering - show ALL scan history regardless of scanner
-    // The scanned_by field will still be properly saved with the current scanner's user ID
 
     const { data: scans, error } = await query
 
@@ -51,36 +33,163 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Transform the data for frontend consumption
-    const transformedScans = scans?.map(scan => ({
-      id: scan.id,
-      scanned_at: scan.scanned_at,
-      status: scan.status,
-      scanner_name: scan.scanned_by_user?.name || 'Unknown',
-      scanner_email: scan.scanned_by_user?.email,
-      ticket: scan.tickets ? {
-        id: scan.order_items.id,
-        qr_code: scan.order_items.qr_code,
-        status: scan.order_items.status,
-        price_paid: scan.order_items.price_paid,
-        created_at: scan.order_items.created_at,
-        ticket_type: scan.order_items.ticket_types?.name,
-        ticket_description: scan.order_items.ticket_types?.description,
-        event_title: scan.order_items.events?.title,
-        event_date: scan.order_items.events?.date,
-        event_time: scan.order_items.events?.time,
-        event_location: scan.order_items.events?.location
-      } : null
-    })) || []
+    // Manually fetch related data
+    let transformedScans: any[] = []
 
-    console.log("✅ Returning scan history:", transformedScans.length, "records")
+    if (scans && scans.length > 0) {
+      // Get unique order IDs and scanner IDs
+      const orderIds = [...new Set(scans.map(scan => scan.order_id).filter(Boolean))]
+      const scannerIds = [...new Set(scans.map(scan => scan.scanned_by).filter(Boolean))]
+
+
+
+      // First: Fetch orders data using order_id
+      let ordersData: any[] = []
+      if (orderIds.length > 0) {
+        const { data: orders } = await supabase
+          .from('orders')
+          .select(`
+            id,
+            qr_code,
+            status,
+            total_price,
+            created_at,
+            event_id,
+            user_id
+          `)
+          .in('id', orderIds)
+
+
+
+        ordersData = orders || []
+      }
+
+      // Second: Fetch order_items using user_id and order_id from orders
+      let orderItemsData: any[] = []
+      if (ordersData.length > 0) {
+        // Get unique combinations of user_id and order_id
+        const orderUserPairs = ordersData.map(order => ({ user_id: order.user_id, order_id: order.id }))
+
+        if (orderUserPairs.length > 0) {
+          // Fetch order_items for each order
+          const orderItemsPromises = orderUserPairs.map(async ({ user_id, order_id }) => {
+            const { data: items } = await supabase
+              .from('order_items')
+              .select('*')
+              .eq('user_id', user_id)
+              .eq('order_id', order_id)
+
+            return items || []
+          })
+
+          const orderItemsResults = await Promise.all(orderItemsPromises)
+          orderItemsData = orderItemsResults.flat()
+        }
+      }
+
+      // Third: Fetch events data using event_id from orders
+      let eventsData: any[] = []
+      if (ordersData.length > 0) {
+        const eventIds = [...new Set(ordersData.map(order => order.event_id).filter(Boolean))]
+
+        if (eventIds.length > 0) {
+          const { data: events } = await supabase
+            .from('events')
+            .select('id, title, date, time, location')
+            .in('id', eventIds)
+
+          eventsData = events || []
+        }
+      }
+
+      // Fetch user data for orders
+      let usersData: any[] = []
+      if (ordersData.length > 0) {
+        const userIds = [...new Set(ordersData.map(order => order.user_id).filter(Boolean))]
+
+        if (userIds.length > 0) {
+          const { data: users } = await supabase
+            .from('users')
+            .select('id, name, email')
+            .in('id', userIds)
+
+          usersData = users || []
+        }
+      }
+
+      // Fetch scanner users data
+      let scannersData: any[] = []
+      if (scannerIds.length > 0) {
+        const { data: scanners } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .in('id', scannerIds)
+
+        scannersData = scanners || []
+      }
+
+      // Create maps for quick lookup
+      const ordersMap = new Map(ordersData.map(order => [order.id, order]))
+      const eventsMap = new Map(eventsData.map(event => [event.id, event]))
+      const usersMap = new Map(usersData.map(user => [user.id, user]))
+      const scannersMap = new Map(scannersData.map(scanner => [scanner.id, scanner]))
+
+      // Create order_items map grouped by order_id
+      const orderItemsMap = new Map()
+      orderItemsData.forEach(item => {
+        if (!orderItemsMap.has(item.order_id)) {
+          orderItemsMap.set(item.order_id, [])
+        }
+        orderItemsMap.get(item.order_id).push(item)
+      })
+
+      // Filter by event if provided
+      let filteredScans = scans
+      if (eventId) {
+        filteredScans = scans.filter(scan => {
+          const order = ordersMap.get(scan.order_id)
+          return order && order.event_id === eventId
+        })
+      }
+
+      // Transform the data for frontend consumption
+      transformedScans = filteredScans.map(scan => {
+        const order = ordersMap.get(scan.order_id)
+        const event = order ? eventsMap.get(order.event_id) : null
+        const user = order ? usersMap.get(order.user_id) : null
+        const scanner = scannersMap.get(scan.scanned_by)
+        const orderItems = order ? orderItemsMap.get(order.id) || [] : []
+
+        return {
+          id: scan.id,
+          scanned_at: scan.scanned_at,
+          status: scan.status,
+          scanner_name: scanner?.name || 'Unknown',
+          scanner_email: scanner?.email,
+          order: order ? {
+            id: order.id,
+            qr_code: order.qr_code,
+            status: order.status,
+            total_price: order.total_price,
+            created_at: order.created_at,
+            event_title: event?.title,
+            event_date: event?.date,
+            event_time: event?.time,
+            event_location: event?.location,
+            user_name: user?.name,
+            user_email: user?.email,
+            order_items: orderItems
+          } : null
+        }
+      })
+    }
 
     return NextResponse.json({
       scans: transformedScans,
       total: transformedScans.length
     })
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('💥 Scan history API error:', error)
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
@@ -91,12 +200,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("📝 Creating scan record")
-    
-    const body = await request.json()
-    const { order_item_id, scanned_by, status } = body
 
-    console.log("📝 Scan data:", { order_item_id, scanned_by, status })
+    const body = await request.json()
+    const { order_id, scanned_by, status } = body
+
+    console.log("📝 Scan data:", { order_id, scanned_by, status })
 
     if (!scanned_by || !status) {
       return NextResponse.json(
@@ -108,7 +216,7 @@ export async function POST(request: NextRequest) {
     const { data: scan, error } = await supabase
       .from('scans')
       .insert({
-        order_item_id,
+        order_id,
         scanned_by,
         status
       })
@@ -123,14 +231,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log("✅ Scan record created:", scan.id)
-
     return NextResponse.json({
       success: true,
       scan
     })
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('💥 Create scan API error:', error)
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },

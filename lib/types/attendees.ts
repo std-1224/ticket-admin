@@ -13,26 +13,23 @@ export interface AttendeeWithPurchaseInfo {
   email: string | null
   created_at: string
   tickets_count: number
-  payment_status: 'paid' | 'pending' | 'failed'
+  payment_status: 'waiting_payment' | 'pending' | 'cancelled' | 'delivered'
   purchase_date: string
-  check_in_status: 'checked_in' | 'not_checked_in'
   total_price: number
   user_id: string
 }
 
 export interface AttendeeStats {
   total_attendees: number
-  paid_payments: number
-  pending_payments: number
-  failed_payments: number
-  checked_in: number
-  not_checked_in: number
+  waiting_payment: number
+  pending: number
+  cancelled: number
+  delivered: number
 }
 
 export interface AttendeeFilters {
   search?: string
-  payment_status?: 'paid' | 'pending' | 'failed' | 'all'
-  check_in_status?: 'checked_in' | 'not_checked_in' | 'all'
+  payment_status?: 'waiting_payment' | 'pending' | 'cancelled' | 'delivered'
   event_id?: string
 }
 

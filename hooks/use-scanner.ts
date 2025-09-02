@@ -1,18 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 export interface ScanResult {
   success: boolean
   status: 'valid' | 'invalid' | 'used'
   message: string
-  ticket: {
+  order: {
     id: string
     event_title?: string
-    ticket_type?: string
-    price_paid?: number
-    purchaser_id?: string
+    total_amount?: number
+    user_id?: string
     created_at?: string
     status: string
     scanned_at?: string
+    user_name?: string
+    user_email?: string
   } | null
 }
 
@@ -22,18 +23,19 @@ export interface ScanHistoryItem {
   status: 'valid' | 'invalid' | 'used'
   scanner_name: string
   scanner_email?: string
-  ticket: {
+  order: {
     id: string
-    qr_code: string
+    order_number?: string
+    qr_code?: string
     status: string
-    price_paid: number
+    total_amount?: number
     created_at: string
-    ticket_type?: string
-    ticket_description?: string
     event_title?: string
     event_date?: string
     event_time?: string
     event_location?: string
+    user_name?: string
+    user_email?: string
   } | null
 }
 
@@ -42,6 +44,7 @@ export function useScanner() {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null)
   const [scanHistory, setScanHistory] = useState<ScanHistoryItem[]>([])
   const [loading, setLoading] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Validate a ticket by QR code
@@ -99,8 +102,11 @@ export function useScanner() {
   }
 
   // Fetch scan history
-  const fetchScanHistory = async (eventId?: string, limit: number = 50) => {
+  const fetchScanHistory = useCallback(async (eventId?: string, limit: number = 50) => {
     try {
+      setHistoryLoading(true)
+      setError(null)
+
       const params = new URLSearchParams()
       if (eventId) params.append('eventId', eventId)
       params.append('limit', limit.toString())
@@ -134,8 +140,10 @@ export function useScanner() {
       setError(err.message || 'Failed to fetch scan history')
       setScanHistory([]) // Set empty array on error
       throw err
+    } finally {
+      setHistoryLoading(false)
     }
-  }
+  }, []) // Empty dependency array since it doesn't depend on any props or state
 
   // Clear scan result
   const clearScanResult = () => {
@@ -160,6 +168,7 @@ export function useScanner() {
     scanResult,
     scanHistory,
     loading,
+    historyLoading,
     error,
 
     // Actions
