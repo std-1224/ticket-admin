@@ -132,146 +132,193 @@ export function MyEventsContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">All Events</h1>
-          <p className="text-muted-foreground">
-            Manage and create new events
-          </p>
+      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="container mx-auto px-6 py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">All Events</h1>
+              <p className="text-muted-foreground mt-1">
+                Manage and create new events
+              </p>
+            </div>
+            <Button
+              onClick={() => router.push('/eventos')}
+              className="w-full sm:w-auto bg-primary hover:bg-primary/90 shadow-lg"
+              size="lg"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create New Event
+            </Button>
+          </div>
         </div>
-        <Button onClick={() => router.push('/eventos')} className="w-full sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          Create New Event
-        </Button>
       </div>
 
-      {/* Events Grid */}
-      {events.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <CalendarDays className="h-16 w-16 text-muted-foreground mb-4 opacity-50" />
-          <h3 className="text-xl font-semibold mb-2">No events yet</h3>
-          <p className="text-muted-foreground mb-6 max-w-md">
-            You haven't created any events yet. Start by creating your first event to manage attendees and track sales.
-          </p>
-          <Button onClick={() => router.push('/eventos')}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Your First Event
-          </Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((event) => {
-            const upcoming = isUpcoming(event.date)
-            
-            return (
-              <Card key={event.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                {/* Event Image */}
-                <div className="aspect-video bg-muted relative overflow-hidden">
-                  {event.image_url ? (
-                    <img
-                      src={event.image_url}
-                      alt={event.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                      <CalendarDays className="h-12 w-12 text-primary/40" />
-                    </div>
-                  )}
-                  <div className="absolute top-3 right-3">
-                    <Badge variant={upcoming ? "default" : "secondary"}>
-                      {upcoming ? "Active" : "Past"}
-                    </Badge>
-                  </div>
-                </div>
+      {/* Main Content */}
+      <div className="container mx-auto px-6 py-8">
 
-                {/* Event Content */}
-                <CardContent className="p-4">
-                  <div className="space-y-3">
-                    {/* Title */}
-                    <h3 className="font-semibold text-lg line-clamp-2">{event.title}</h3>
+        {/* Events Grid */}
+        {events.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="bg-muted/30 rounded-full p-6 mb-6">
+              <CalendarDays className="h-16 w-16 text-muted-foreground opacity-50" />
+            </div>
+            <h3 className="text-2xl font-semibold mb-3">No events yet</h3>
+            <p className="text-muted-foreground mb-8 max-w-md leading-relaxed">
+              You haven't created any events yet. Start by creating your first event to manage attendees and track sales.
+            </p>
+            <Button
+              onClick={() => router.push('/eventos')}
+              size="lg"
+              className="shadow-lg"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create Your First Event
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+            {events.map((event) => {
+              const upcoming = isUpcoming(event.date)
 
-                    {/* Event Details */}
-                    <div className="space-y-2 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <CalendarDays className="h-4 w-4" />
-                        <span>{formatDate(event.date)}</span>
-                      </div>
-                      {event.time && (
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          <span>{formatTime(event.time)}</span>
-                        </div>
-                      )}
-                      {event.location && (
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          <span className="line-clamp-1">{event.location}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Description */}
-                    {event.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {event.description}
-                      </p>
-                    )}
-
-                    {/* Ticket Types */}
-                    {event.ticket_types && event.ticket_types.length > 0 && (
-                      <div className="space-y-2">
-                        <div className="text-xs font-medium text-muted-foreground">Ticket Types:</div>
-                        <div className="flex flex-wrap gap-1">
-                          {event.ticket_types.slice(0, 3).map((ticket) => (
-                            <Badge key={ticket.id} variant="secondary" className="text-xs">
-                              {ticket.name} - ${ticket.price}
-                            </Badge>
-                          ))}
-                          {event.ticket_types.length > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{event.ticket_types.length - 3} more
-                            </Badge>
-                          )}
-                        </div>
+              return (
+                <Card key={event.id} className="group overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 shadow-md bg-card/50 backdrop-blur-sm flex flex-col h-full">
+                  {/* Event Image */}
+                  <div className="aspect-[16/10] bg-muted relative overflow-hidden">
+                    {event.image_url ? (
+                      <img
+                        src={event.image_url}
+                        alt={event.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5">
+                        <CalendarDays className="h-16 w-16 text-primary/30" />
                       </div>
                     )}
-
-                    {/* Stats */}
-                    <div className="flex items-center justify-between pt-2 border-t">
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Users className="h-4 w-4" />
-                        <span className="text-xs">{event.total_tickets_sold || 0} tickets sold</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <CalendarDays className="h-4 w-4" />
-                        <span className="text-xs font-medium">
-                          {event.ticket_types?.length || 0} ticket types
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => router.push(`/eventos?eventId=${event.id}`)}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                    <div className="absolute top-4 right-4">
+                      <Badge
+                        variant={upcoming ? "default" : "secondary"}
+                        className={`shadow-lg ${upcoming ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500'}`}
                       >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
+                        {upcoming ? "Active" : "Past"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Event Content */}
+                  <CardContent className="p-6 flex flex-col flex-1">
+                    <div className="space-y-4 flex-1">
+                      {/* Title */}
+                      <div>
+                        <h3 className="font-bold text-xl line-clamp-2 group-hover:text-primary transition-colors">
+                          {event.title}
+                        </h3>
+                      </div>
+
+                      {/* Event Details */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+                            <CalendarDays className="h-4 w-4 text-primary" />
+                          </div>
+                          <span className="font-medium">{formatDate(event.date)}</span>
+                        </div>
+                        {event.time && (
+                          <div className="flex items-center gap-3 text-muted-foreground">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-50">
+                              <Clock className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <span className="font-medium">{formatTime(event.time)}</span>
+                          </div>
+                        )}
+                        {event.location && (
+                          <div className="flex items-center gap-3 text-muted-foreground">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-50">
+                              <MapPin className="h-4 w-4 text-green-600" />
+                            </div>
+                            <span className="font-medium line-clamp-1">{event.location}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Description */}
+                      {event.description && (
+                        <div className="pt-2">
+                          <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
+                            {event.description}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Ticket Types */}
+                      {event.ticket_types && event.ticket_types.length > 0 && (
+                        <div className="space-y-3 pt-2 border-t border-border/50">
+                          <div className="text-sm font-semibold text-foreground">Ticket Types</div>
+                          <div className="space-y-2">
+                            {event.ticket_types.slice(0, 2).map((ticket) => (
+                              <div key={ticket.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                                <span className="font-medium text-sm">{ticket.name}</span>
+                                <Badge variant="secondary" className="font-semibold">
+                                  ${ticket.price}
+                                </Badge>
+                              </div>
+                            ))}
+                            {event.ticket_types.length > 2 && (
+                              <div className="text-center">
+                                <Badge variant="outline" className="text-xs">
+                                  +{event.ticket_types.length - 2} more types
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Stats */}
+                      <div className="flex items-center justify-between pt-4 mt-4 border-t border-border/50">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-50">
+                            <Users className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold">{event.total_tickets_sold || 0}</div>
+                            <div className="text-xs text-muted-foreground">Tickets Sold</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-50">
+                            <CalendarDays className="h-4 w-4 text-purple-600" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold">{event.ticket_types?.length || 0}</div>
+                            <div className="text-xs text-muted-foreground">Ticket Types</div>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Actions - Always at bottom */}
+                    <div className="mt-auto pt-4">
+                      <Button
+                        className="w-full bg-primary hover:bg-primary/90 shadow-lg group-hover:shadow-xl transition-all"
+                        onClick={() => router.push(`/eventos?eventId=${event.id}`)}
+                        size="lg"
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Event Details
                       </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
