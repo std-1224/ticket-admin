@@ -201,9 +201,9 @@ export function MyEventsContent() {
                     <div className="absolute top-4 right-4">
                       <Badge
                         variant={upcoming ? "default" : "secondary"}
-                        className={`shadow-lg ${upcoming ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500'}`}
+                        className={`shadow-lg bg-green-500 hover:bg-green-600`}
                       >
-                        {upcoming ? "Active" : "Past"}
+                        {event.date}
                       </Badge>
                     </div>
                   </div>
