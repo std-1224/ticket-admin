@@ -83,8 +83,6 @@ export const CheckInPage = () => {
 
     const fetchLiveCheckIns = async () => {
       try {
-        console.log('🔍 Fetching live check-ins from scans table...')
-
         // Fetch recent scans with user information
         const { data: scans, error: scansError } = await supabase
           .from('scans')

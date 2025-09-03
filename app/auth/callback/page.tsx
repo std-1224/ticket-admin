@@ -58,8 +58,36 @@ export default async function AuthCallbackPage({
           console.error('Unexpected error saving user:', err)
         }
 
-        // Redirect to the main dashboard
-        redirect('/resumen')
+        // Check user role from database to get the most up-to-date role
+        try {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', data.user.id)
+            .single()
+
+          if (userError) {
+            console.error('Error fetching user role:', userError)
+            redirect(`/auth?error=${encodeURIComponent('Failed to verify user permissions')}`)
+          }
+
+          const userRole = userData?.role || 'buyer'
+          console.log('User role:', userRole)
+
+          // Check if user has admin or scanner role
+          if (userRole !== 'admin' && userRole !== 'scanner') {
+            console.log('Access denied - user role is:', userRole)
+            // Sign out the user and redirect to auth with error message
+            await supabase.auth.signOut()
+            redirect(`/auth?error=${encodeURIComponent('Access denied. This application is restricted to administrators and scanner operators only.')}`)
+          }
+
+          // Redirect to the main dashboard for authorized users
+          redirect('/resumen')
+        } catch (err) {
+          console.error('Unexpected error checking user role:', err)
+          redirect(`/auth?error=${encodeURIComponent('Failed to verify user permissions')}`)
+        }
       }
     } catch (error: any) {
       console.error('Unexpected error in auth callback:', error)
