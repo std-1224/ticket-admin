@@ -464,7 +464,7 @@ export const AttendeesPage = () => {
                     <TableHead>Event</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>QR Code</TableHead>
-                    <TableHead>Actions</TableHead>
+                    {/* <TableHead>Actions</TableHead> */}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -511,11 +511,11 @@ export const AttendeesPage = () => {
                           />
                         {/* </div> */}
                       </TableCell>
-                      <TableCell>
+                      {/* <TableCell>
                         <Button variant="outline" size="sm">
                           ...
                         </Button>
-                      </TableCell>
+                      </TableCell> */}
                     </TableRow>
                   ))}
                 </TableBody>
