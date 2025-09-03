@@ -19,40 +19,64 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
 
     const search = searchParams.get('search') || undefined
-    const paymentStatus = searchParams.get('paymentStatus') as 'waiting_payment' | 'pending' | 'cancelled' | 'delivered' | undefined
+    const paymentStatus = searchParams.get('payment_status') as 'pending' | 'delivered' | 'cancelled' | undefined
+    const checkinStatus = searchParams.get('checkin_status') || undefined
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
     const format = searchParams.get('format') // 'csv' for export
 
-    // Test basic connection first
-    const { data: testData, error: testError, count: testCount } = await supabaseAdmin
-      .from('attendees')
-      .select('*', { count: 'exact' })
-      .limit(1)
+    console.log('Orders API called with params:', {
+      page, limit, search, paymentStatus, checkinStatus
+    })
 
-    // Build the query to get all attendees across all events
-    // First get all attendees
+    // Build the query for orders without joins first
     let query = supabaseAdmin
-      .from('attendees')
+      .from('orders')
       .select(`
         id,
-        order_item_id,
-        name,
-        email,
-        created_at
-      `)
+        user_id,
+        event_id,
+        total_price,
+        status,
+        created_at,
+        updated_at,
+        qr_code
+      `, { count: 'exact' })
 
-    // Apply search filter
+    // Apply search filter on user name/email
     if (search && search.trim()) {
       const searchTerm = search.trim()
       console.log('Applying search filter for:', searchTerm)
-      query = query.or(`name.ilike.%${searchTerm}%,emai l.ilike.%${searchTerm}%`)
+      query = query.or(`users.name.ilike.%${searchTerm}%,users.email.ilike.%${searchTerm}%`)
     }
 
-    // Get total count for pagination
-    const { count } = await supabaseAdmin
-      .from('attendees')
-      .select('id', { count: 'exact', head: true })
+    // Exclude waiting_payment orders by default
+    query = query.neq('status', 'waiting_payment')
+
+    // Apply payment status filter
+    if (paymentStatus) {
+      query = query.eq('status', paymentStatus)
+    }
+
+    // Apply check-in status filter
+    if (checkinStatus === 'checked_in') {
+      // Get orders that have valid scans
+      const { data: validScans } = await supabaseAdmin
+        .from('scans')
+        .select('order_id')
+        .eq('status', 'valid')
+
+      if (validScans && validScans.length > 0) {
+        const orderIds = validScans.map(scan => scan.order_id)
+        query = query.in('id', orderIds)
+      } else {
+        // No valid scans, return empty result
+        query = query.eq('id', 'no-match')
+      }
+    } else if (checkinStatus === 'not_checked_in') {
+      // Show orders with status pending
+      query = query.eq('status', 'pending')
+    }
 
     // Apply pagination
     const offset = (page - 1) * limit
@@ -61,10 +85,10 @@ export async function GET(request: NextRequest) {
     // Order by creation date
     query = query.order('created_at', { ascending: false })
 
-    const { data: attendees, error } = await query
+    const { data: orders, error } = await query
 
     if (error) {
-      console.error('Attendees query error:', error)
+      console.error('Orders query error:', error)
       if (isAuthError(error)) {
         return NextResponse.json(
           {
@@ -75,101 +99,102 @@ export async function GET(request: NextRequest) {
           { status: 401 }
         )
       }
-      throw new Error(`Failed to fetch attendees: ${error.message}`)
+      throw new Error(`Failed to fetch orders: ${error.message}`)
     }
 
-    // Now fetch tickets separately for all attendees
-    let ticketsData: any[] = []
-    if (attendees && attendees.length > 0) {
-      const orderItemIds = attendees.map((a: any) => a.order_item_id).filter(Boolean)
+    // Fetch users and events separately
+    const userIds = [...new Set((orders || []).map((order: any) => order.user_id).filter(Boolean))]
+    const eventIds = [...new Set((orders || []).map((order: any) => order.event_id).filter(Boolean))]
 
-      if (orderItemIds.length > 0) {
-        let ticketsQuery = supabaseAdmin
-          .from('order_items')
-          .select(`
-            id,
-            event_id,
-            order_id,
-            qr_code,
-            status,
-            purchased_at,
-            price_paid,
-            events(
-              id,
-              title,
-              date,
-              time,
-              location
-            )
-          `)
-          .in('id', orderItemIds)
+    // Fetch users
+    let usersData: any[] = []
+    if (userIds.length > 0) {
+      const { data: users, error: usersError } = await supabaseAdmin
+        .from('users')
+        .select('id, name, email, avatar_url')
+        .in('id', userIds)
 
-        // Apply payment status filter to tickets
-        if (paymentStatus) {
-          ticketsQuery = ticketsQuery.eq('status', paymentStatus)
-        }
-
-        const { data: tickets, error: ticketsError } = await ticketsQuery
-
-        if (ticketsError) {
-          console.error('Tickets query error:', ticketsError)
-          throw new Error(`Failed to fetch tickets: ${ticketsError.message}`)
-        }
-
-        ticketsData = tickets || []
+      if (usersError) {
+        console.error('❌ Users fetch error:', usersError)
       }
+      usersData = users || []
     }
 
-    // Create a map of order_item_id to ticket data
-    const ticketsByOrderItemId = new Map<string, any>()
-    ticketsData.forEach(ticket => {
-      ticketsByOrderItemId.set(ticket.id, ticket)
+    // Fetch events
+    let eventsData: any[] = []
+    if (eventIds.length > 0) {
+      const { data: events, error: eventsError } = await supabaseAdmin
+        .from('events')
+        .select('id, title, description')
+        .in('id', eventIds)
+
+      if (eventsError) {
+        console.error('❌ Events fetch error:', eventsError)
+      }
+      eventsData = events || []
+    }
+
+    // Create lookup maps
+    const usersMap = new Map(usersData.map(user => [user.id, user]))
+    const eventsMap = new Map(eventsData.map(event => [event.id, event]))
+
+    // Transform orders data to match expected format
+    const attendees = (orders || []).map((order: any) => {
+      const user = usersMap.get(order.user_id) || {}
+      const event = eventsMap.get(order.event_id) || {}
+
+      return {
+        id: order.id,
+        name: user.name || 'Unknown',
+        email: user.email || 'N/A',
+        avatar_url: user.avatar_url || null,
+        event_name: event.title || 'Unknown Event',
+        event_description: event.description || '',
+        status: order.status,
+        qr_code: order.qr_code,
+        total_price: order.total_price,
+        created_at: order.created_at,
+        updated_at: order.updated_at,
+        order_id: order.id,
+        user_id: order.user_id,
+        event_id: order.event_id
+      }
     })
 
-    // Add ticket data to attendees
-    const attendeesWithTickets = attendees?.map(attendee => ({
-      ...attendee,
-      tickets: ticketsByOrderItemId.get(attendee.order_item_id) || null
-    })) || []
-
-    // Get scan data separately for all attendees
+    // Get scan data for check-in status
     let scansData: any[] = []
-    if (attendeesWithTickets && attendeesWithTickets.length > 0) {
-      const ticketIds = attendeesWithTickets.map((a: any) => a.order_item_id).filter(Boolean)
+    if (attendees && attendees.length > 0) {
+      const orderIds = attendees.map((a: any) => a.order_id).filter(Boolean)
 
-      if (ticketIds.length > 0) {
+      if (orderIds.length > 0) {
         const { data: scans } = await supabaseAdmin
           .from('scans')
-          .select('id, order_item_id, status, scanned_at')
-          .in('order_item_id', ticketIds)
-          .eq('status', 'success')
+          .select('id, order_id, status, scanned_at')
+          .in('order_id', orderIds)
+          .eq('status', 'valid')
 
         scansData = scans || []
       }
     }
 
-    // Create a map of order_item_id to scans
-    const scansByTicket = new Map<string, any[]>()
+    // Create a map of order_id to scans
+    const scansByOrder = new Map<string, any[]>()
     scansData.forEach(scan => {
-      if (!scansByTicket.has(scan.order_item_id)) {
-        scansByTicket.set(scan.order_item_id, [])
+      if (!scansByOrder.has(scan.order_id)) {
+        scansByOrder.set(scan.order_id, [])
       }
-      scansByTicket.get(scan.order_item_id)!.push(scan)
+      scansByOrder.get(scan.order_id)!.push(scan)
     })
 
-    // Add scan data to attendees with tickets
-    const attendeesWithScans = attendeesWithTickets?.map(attendee => ({
+    // Add scan data to attendees
+    const attendeesWithScans = attendees?.map(attendee => ({
       ...attendee,
-      scans: scansByTicket.get(attendee.order_item_id) || []
+      scans: scansByOrder.get(attendee.order_id) || [],
+      is_checked_in: scansByOrder.has(attendee.order_id)
     })) || []
 
-    // Filter by payment status if specified
+    // Final filtered attendees
     let filteredAttendees = attendeesWithScans
-    if (paymentStatus) {
-      filteredAttendees = attendeesWithScans.filter(attendee =>
-        attendee.tickets && attendee.tickets.status === paymentStatus
-      )
-    }
 
     // Calculate real stats from orders table
     const { data: deliveredOrders, error: deliveredError } = await supabaseAdmin
@@ -182,6 +207,10 @@ export async function GET(request: NextRequest) {
       .select('total_price')
       .eq('status', 'pending')
 
+    const { count: totalCount } = await supabaseAdmin
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+
     if (deliveredError) {
       console.error('Error fetching delivered orders:', deliveredError)
     }
@@ -193,15 +222,16 @@ export async function GET(request: NextRequest) {
     // Calculate totals
     const completePaymentAmount = deliveredOrders?.reduce((sum, order) => sum + (order.total_price || 0), 0) || 0
     const pendingPaymentAmount = pendingOrders?.reduce((sum, order) => sum + (order.total_price || 0), 0) || 0
-    const checkedInCount = deliveredOrders?.length || 0
+    const checkedInCount = filteredAttendees.filter(a => a.is_checked_in).length
+    const notCheckedInCount = filteredAttendees.filter(a => !a.is_checked_in).length
 
     const stats = {
-      total_attendees: count || 0,
+      total_attendees: totalCount || 0,
       complete_payment_amount: completePaymentAmount,
       pending_payment_amount: pendingPaymentAmount,
       failed_payments: 0, // Keep for compatibility
       checked_in: checkedInCount,
-      not_checked_in: (pendingOrders?.length || 0)
+      not_checked_in: notCheckedInCount
     }
 
     // Handle CSV export
@@ -220,17 +250,14 @@ export async function GET(request: NextRequest) {
         const csvRows = [csvHeaders.join(',')]
 
         filteredAttendees.forEach(attendee => {
-          const ticket = Array.isArray(attendee.tickets) ? attendee.tickets[0] : attendee.tickets
-          const event = Array.isArray(ticket?.events) ? ticket?.events[0] : ticket?.events
-
           const row = [
             `"${attendee.name || ''}"`,
             `"${attendee.email || ''}"`,
-            `"${event?.title || ''}"`,
-            `"${ticket?.status || ''}"`,
-            `"${ticket?.qr_code || ''}"`,
-            `"${ticket?.price_paid || ''}"`,
-            `"${ticket?.purchased_at || ''}"`
+            `"${attendee.event_name || ''}"`,
+            `"${attendee.status || ''}"`,
+            `"${attendee.qr_code || ''}"`,
+            `"${attendee.total_price || ''}"`,
+            `"${attendee.created_at || ''}"`
           ]
 
           csvRows.push(row.join(','))
@@ -262,7 +289,7 @@ export async function GET(request: NextRequest) {
       data: {
         attendees: filteredAttendees,
         stats,
-        total_count: count || 0
+        total_count: totalCount || 0
       }
     })
 

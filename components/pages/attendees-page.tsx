@@ -1,255 +1,293 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback } from "react"
-import { useAuth } from "@/contexts/auth-context"
-import { Search, Download, Filter, Users, CreditCard, CheckCircle, Clock, AlertCircle, X } from "lucide-react"
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/contexts/auth-context";
+import {
+  Search,
+  Download,
+  Filter,
+  Users,
+  CreditCard,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  X,
+} from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { QRCodeSVG } from "qrcode.react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface AttendeeData {
-  id: string
-  name: string
-  email: string
-  order_item_id: string
-  created_at: string
-  tickets: {
-    id: string
-    event_id: string
-    user_id: string
-    qr_code: string
-    status: 'paid' | 'pending' | 'failed'
-    created_at: string
-    price_paid: number
-    events: {
-      id: string
-      title: string
-      date: string
-      time: string
-      location: string
-    }
-  }
+  id: string;
+  name: string;
+  email: string;
+  avatar_url?: string;
+  event_name: string;
+  event_description: string;
+  status: "pending" | "delivered" | "cancelled";
+  qr_code: string;
+  total_price: number;
+  created_at: string;
+  updated_at: string;
+  order_id: string;
+  user_id: string;
+  event_id: string;
   scans: Array<{
-    id: string
-    order_item_id: string
-    status: string
-    scanned_at: string
-  }>
+    id: string;
+    order_id: string;
+    status: string;
+    scanned_at: string;
+  }>;
+  is_checked_in: boolean;
 }
 
 interface AttendeeStats {
-  total_attendees: number
-  complete_payment_amount: number  // Total amount for delivered orders
-  pending_payment_amount: number   // Total amount for pending orders
-  failed_payments: number
-  checked_in: number              // Count of delivered orders
-  not_checked_in: number
+  total_attendees: number;
+  complete_payment_amount: number; // Total amount for delivered orders
+  pending_payment_amount: number; // Total amount for pending orders
+  failed_payments: number;
+  checked_in: number; // Count of delivered orders
+  not_checked_in: number;
 }
 
 export const AttendeesPage = () => {
-  const [attendees, setAttendees] = useState<AttendeeData[]>([])
-  const [stats, setStats] = useState<AttendeeStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [searchLoading, setSearchLoading] = useState(false)
-  const [statsLoading, setStatsLoading] = useState(true)
-  const [error, setError] = useState('')
-  const { handleAuthError } = useAuth()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("")
-  const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'pending' | 'failed'>('all')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'checked_in' | 'not_checked_in'>('all')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalCount, setTotalCount] = useState(0)
-  const limit = 50
+  const [allAttendees, setAllAttendees] = useState<AttendeeData[]>([]);
+  const [stats, setStats] = useState<AttendeeStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const { handleAuthError } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState<
+    "all" | "paid" | "pending" | "failed"
+  >("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "checked_in" | "not_checked_in"
+  >("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const limit = 50;
 
-  // Debounce search term
+  // Client-side filtering of attendees
+  const filteredAttendees = allAttendees.filter((attendee) => {
+    if (!searchTerm) return true;
+
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      attendee.name.toLowerCase().includes(searchLower) ||
+      attendee.email.toLowerCase().includes(searchLower)
+    );
+  });
+
+  // Pagination for filtered results
+  const startIndex = (currentPage - 1) * limit;
+  const endIndex = startIndex + limit;
+  const paginatedAttendees = filteredAttendees.slice(startIndex, endIndex);
+  const totalFilteredCount = filteredAttendees.length;
+
   useEffect(() => {
-    if (searchTerm !== debouncedSearchTerm) {
-      setSearchLoading(true)
-    }
-
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm)
-      setSearchLoading(false)
-    }, 500) // 500ms delay
-
-    return () => clearTimeout(timer)
-  }, [searchTerm, debouncedSearchTerm])
+    fetchDashboardStats();
+  }, []); // Only fetch stats once on component mount
 
   useEffect(() => {
-    fetchDashboardStats()
-  }, []) // Only fetch stats once on component mount
-
-  useEffect(() => {
-    fetchAllAttendees()
-  }, [debouncedSearchTerm, paymentFilter, statusFilter, currentPage])
+    fetchAllAttendees();
+  }, [paymentFilter, statusFilter]);
 
   // Separate function to fetch dashboard stats (called only once)
   const fetchDashboardStats = async () => {
     try {
-      setStatsLoading(true)
+      setStatsLoading(true);
 
-      const response = await fetch('/api/attendees/stats')
-      const result = await response.json()
+      const response = await fetch("/api/attendees/stats");
+      const result = await response.json();
 
       if (!response.ok) {
-        if (response.status === 401 || result.code === 'AUTH_ERROR') {
-          handleAuthError({ message: result.error, status: response.status })
-          return
+        if (response.status === 401 || result.code === "AUTH_ERROR") {
+          handleAuthError({ message: result.error, status: response.status });
+          return;
         }
-        throw new Error(result.error || 'Failed to fetch stats')
+        throw new Error(result.error || "Failed to fetch stats");
       }
 
       if (result.success) {
-        setStats(result.data)
+        setStats(result.data);
       }
     } catch (err: any) {
-      console.error('Error fetching dashboard stats:', err)
+      console.error("Error fetching dashboard stats:", err);
     } finally {
-      setStatsLoading(false)
+      setStatsLoading(false);
     }
-  }
+  };
 
   const fetchAllAttendees = async () => {
     try {
-      setLoading(true)
-      setError('')
+      setLoading(true);
+      setError("");
 
       const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: limit.toString(),
-      })
+        page: "1",
+        limit: "1000", // Fetch all records for client-side filtering
+      });
 
-      if (debouncedSearchTerm) params.append('search', debouncedSearchTerm)
-      if (paymentFilter !== 'all') params.append('paymentStatus', paymentFilter)
-      if (statusFilter !== 'all') params.append('checkInStatus', statusFilter)
+      if (paymentFilter !== "all")
+        params.append("payment_status", paymentFilter);
+      if (statusFilter !== "all") params.append("checkin_status", statusFilter);
 
-      console.log('Fetching attendees with params:', {
-        search: debouncedSearchTerm,
+      console.log("Fetching attendees with params:", {
         paymentFilter,
         statusFilter,
         page: currentPage,
-        limit
-      })
+        limit,
+      });
 
-      const response = await fetch(`/api/attendees/all?${params}`)
-      const result = await response.json()
+      const response = await fetch(`/api/attendees/all?${params}`);
+      const result = await response.json();
 
       if (!response.ok) {
         // Check if it's an auth error
-        if (response.status === 401 || result.code === 'AUTH_ERROR') {
-          handleAuthError({ message: result.error, status: response.status })
-          return
+        if (response.status === 401 || result.code === "AUTH_ERROR") {
+          handleAuthError({ message: result.error, status: response.status });
+          return;
         }
-        throw new Error(result.error || 'Failed to fetch attendees')
+        throw new Error(result.error || "Failed to fetch attendees");
       }
 
       if (result.success) {
-        setAttendees(result.data.attendees || [])
-        setTotalCount(result.data.total_count || 0)
+        setAllAttendees(result.data.attendees || []);
+        setTotalCount(result.data.total_count || 0);
       } else {
-        throw new Error(result.error || 'Failed to fetch attendees')
+        throw new Error(result.error || "Failed to fetch attendees");
       }
     } catch (err: any) {
-      console.error('Error fetching attendees:', err)
-      setError(err.message || 'Failed to fetch attendees')
+      console.error("Error fetching attendees:", err);
+      setError(err.message || "Failed to fetch attendees");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleSearch = (value: string) => {
-    setSearchTerm(value)
-    setCurrentPage(1) // Reset to first page when searching
-  }
+    setSearchTerm(value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
 
   const clearSearch = () => {
-    setSearchTerm("")
-    setCurrentPage(1)
-  }
+    setSearchTerm("");
+    setCurrentPage(1);
+  };
 
   const handlePaymentFilter = (value: string) => {
-    setPaymentFilter(value as 'all' | 'paid' | 'pending' | 'failed')
-    setCurrentPage(1)
-  }
+    setPaymentFilter(value as "all" | "paid" | "pending" | "failed");
+    setCurrentPage(1);
+  };
 
   const handleStatusFilter = (value: string) => {
-    setStatusFilter(value as 'all' | 'checked_in' | 'not_checked_in')
-    setCurrentPage(1)
-  }
+    setStatusFilter(value as "all" | "checked_in" | "not_checked_in");
+    setCurrentPage(1);
+  };
 
   const handleExport = async () => {
     try {
       const params = new URLSearchParams({
-        format: 'csv'
-      })
+        format: "csv",
+      });
 
-      if (debouncedSearchTerm) params.append('search', debouncedSearchTerm)
-      if (paymentFilter !== 'all') params.append('paymentStatus', paymentFilter)
-      if (statusFilter !== 'all') params.append('checkInStatus', statusFilter)
+      if (paymentFilter !== "all")
+        params.append("payment_status", paymentFilter);
+      if (statusFilter !== "all") params.append("checkin_status", statusFilter);
 
-      const response = await fetch(`/api/attendees/all?${params}`)
+      const response = await fetch(`/api/attendees/all?${params}`);
 
       if (!response.ok) {
-        throw new Error('Failed to export data')
+        throw new Error("Failed to export data");
       }
 
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.style.display = 'none'
-      a.href = url
-      a.download = `all-attendees-${new Date().toISOString().split('T')[0]}.csv`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = `all-attendees-${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (err: any) {
-      console.error('Export error:', err)
-      setError(err.message || 'Failed to export data')
+      console.error("Export error:", err);
+      setError(err.message || "Failed to export data");
     }
-  }
+  };
 
-  const totalPages = Math.ceil(totalCount / limit)
+  const totalPages = Math.ceil(totalFilteredCount / limit);
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-  }
+    setCurrentPage(page);
+  };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   const getPaymentStatusBadge = (status: string) => {
     switch (status) {
-      case 'paid':
-        return <Badge variant="default" className="bg-green-500">Paid</Badge>
-      case 'pending':
-        return <Badge variant="secondary">Pending</Badge>
-      case 'failed':
-        return <Badge variant="destructive">Failed</Badge>
+      case "delivered":
+        return (
+          <Badge variant="default" className="bg-green-500">
+            QR Enviado
+          </Badge>
+        );
+      case "pending":
+        return <Badge variant="secondary">Pending</Badge>;
+      case "cancelled":
+        return <Badge variant="destructive">Cancelled</Badge>;
       default:
-        return <Badge variant="outline">Unknown</Badge>
+        return <Badge variant="outline">waiting payment</Badge>;
     }
-  }
+  };
 
   const getCheckInStatusBadge = (scans: any[]) => {
     if (scans && scans.length > 0) {
-      return <Badge variant="default" className="bg-blue-500">Checked In</Badge>
+      return (
+        <Badge variant="default" className="bg-blue-500">
+          Checked In
+        </Badge>
+      );
     }
-    return <Badge variant="outline">Not Checked In</Badge>
-  }
+    return <Badge variant="outline">Not Checked In</Badge>;
+  };
 
   if (error) {
     return (
@@ -257,7 +295,9 @@ export const AttendeesPage = () => {
         <Card>
           <CardContent className="p-6">
             <div className="text-center">
-              <p className="text-red-500 mb-4">Error loading attendees: {error}</p>
+              <p className="text-red-500 mb-4">
+                Error loading attendees: {error}
+              </p>
               <Button onClick={fetchAllAttendees} variant="outline">
                 Try Again
               </Button>
@@ -265,7 +305,7 @@ export const AttendeesPage = () => {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -282,7 +322,9 @@ export const AttendeesPage = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="pb-1">
-            <CardTitle className="text-sm sm:text-base">Completed Payments</CardTitle>
+            <CardTitle className="text-sm sm:text-base">
+              Completed Payments
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {statsLoading ? (
@@ -296,7 +338,9 @@ export const AttendeesPage = () => {
         </Card>
         <Card>
           <CardHeader className="pb-1">
-            <CardTitle className="text-sm sm:text-base">Pending Payments</CardTitle>
+            <CardTitle className="text-sm sm:text-base">
+              Pending Payments
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {statsLoading ? (
@@ -316,7 +360,9 @@ export const AttendeesPage = () => {
             {statsLoading ? (
               <Skeleton className="h-8 w-16" />
             ) : (
-              <div className="text-lg sm:text-3xl font-bold text-blue-400">{stats?.checked_in || 0}</div>
+              <div className="text-lg sm:text-3xl font-bold text-blue-400">
+                {stats?.checked_in || 0}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -335,12 +381,7 @@ export const AttendeesPage = () => {
                   onChange={(e) => handleSearch(e.target.value)}
                   className="pl-10"
                 />
-                {searchLoading && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-blue-600 rounded-full"></div>
-                  </div>
-                )}
-                {!searchLoading && searchTerm && (
+                {searchTerm && (
                   <button
                     onClick={clearSearch}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
@@ -357,9 +398,9 @@ export const AttendeesPage = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Payments</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="delivered">Delivered</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={handleStatusFilter}>
@@ -398,14 +439,18 @@ export const AttendeesPage = () => {
                 ))}
               </div>
             </div>
-          ) : attendees.length === 0 ? (
+          ) : paginatedAttendees.length === 0 ? (
             <div className="p-6 text-center">
               <Users className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No attendees found</h3>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                No attendees found
+              </h3>
               <p className="mt-1 text-sm text-gray-500">
-                {debouncedSearchTerm || paymentFilter !== 'all' || statusFilter !== 'all'
-                  ? 'Try adjusting your search or filters.'
-                  : 'No attendees have been registered yet.'}
+                {searchTerm ||
+                paymentFilter !== "all" ||
+                statusFilter !== "all"
+                  ? "Try adjusting your search or filters."
+                  : "No attendees have been registered yet."}
               </p>
             </div>
           ) : (
@@ -413,46 +458,66 @@ export const AttendeesPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Avatar</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Event</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Check-in</TableHead>
-                    <TableHead>Registered</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>QR Code</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {attendees.map((attendee) => {
-                    const ticket = Array.isArray(attendee.tickets) ? attendee.tickets[0] : attendee.tickets
-                    const event = Array.isArray(ticket?.events) ? ticket?.events[0] : ticket?.events
-
-                    return (
-                      <TableRow key={attendee.id}>
-                        <TableCell className="font-medium">{attendee.name}</TableCell>
-                        <TableCell>{attendee.email}</TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{event?.title || 'Unknown Event'}</div>
-                            <div className="text-sm text-gray-500">{event?.location}</div>
+                  {paginatedAttendees.map((attendee) => (
+                    <TableRow key={attendee.id}>
+                      <TableCell>
+                        {attendee.avatar_url ? (
+                          <img
+                            src={attendee.avatar_url}
+                            alt={attendee.name}
+                            className="w-10 h-10 rounded-full"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+                            <span className="text-sm font-medium text-gray-600">
+                              {attendee.name.charAt(0).toUpperCase()}
+                            </span>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            {getPaymentStatusBadge(ticket?.status || 'unknown')}
-                            <div className="text-sm text-gray-500 mt-1">
-                              ${ticket?.price_paid || 0}
-                            </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {attendee.name}
+                      </TableCell>
+                      <TableCell>{attendee.email}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">
+                            {attendee.event_name}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {getCheckInStatusBadge(attendee.scans)}
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500">
-                          {formatDate(attendee.created_at)}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {getPaymentStatusBadge(attendee.status)}
+                      </TableCell>
+                      <TableCell>
+                        {/* <div className="flex items-center space-x-2"> */}
+                          <QRCodeSVG
+                            value={attendee.qr_code}
+                            size={42}
+                            level="M"
+                            className="qr-code-svg"
+                            bgColor="#ffffff"
+                            fgColor="#000000"
+                          />
+                        {/* </div> */}
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="outline" size="sm">
+                          ...
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
@@ -473,8 +538,9 @@ export const AttendeesPage = () => {
           </Button>
 
           {[...Array(Math.min(5, totalPages))].map((_, i) => {
-            const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i
-            if (pageNum > totalPages) return null
+            const pageNum =
+              Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+            if (pageNum > totalPages) return null;
 
             return (
               <Button
@@ -485,7 +551,7 @@ export const AttendeesPage = () => {
               >
                 {pageNum}
               </Button>
-            )
+            );
           })}
 
           <Button
@@ -499,5 +565,5 @@ export const AttendeesPage = () => {
         </div>
       )}
     </div>
-  )
-}
+  );
+};

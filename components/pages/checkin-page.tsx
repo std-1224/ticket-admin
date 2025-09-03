@@ -14,11 +14,13 @@ interface CheckInStats {
   totalOrders: number
 }
 
-const checkInData = [
-  { name: "Noah Martinez", status: "Success", timestamp: "7:05:12 PM" },
-  { name: "Guest User", status: "Invalid", timestamp: "7:04:58 PM" },
-  { name: "Olivia Martin", status: "Success", timestamp: "7:02:34 PM" },
-]
+interface LiveCheckIn {
+  id: string
+  attendeeName: string
+  status: string
+  scannedAt: string
+  formattedTime: string
+}
 
 export const CheckInPage = () => {
   const [checkInStats, setCheckInStats] = useState<CheckInStats>({
@@ -26,11 +28,11 @@ export const CheckInPage = () => {
     pendingCheckIn: 0,
     totalOrders: 0
   })
+  const [liveCheckIns, setLiveCheckIns] = useState<LiveCheckIn[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchCheckInStats = async () => {
-
       try {
         // Get orders with delivered status (checked in)
         const { data: deliveredOrders, error: deliveredError } = await supabase
@@ -76,13 +78,84 @@ export const CheckInPage = () => {
         })
       } catch (error) {
         console.error('Error fetching check-in stats:', error)
+      }
+    }
+
+    const fetchLiveCheckIns = async () => {
+      try {
+        console.log('🔍 Fetching live check-ins from scans table...')
+
+        // Fetch recent scans with user information
+        const { data: scans, error: scansError } = await supabase
+          .from('scans')
+          .select(`
+            id,
+            scanned_at,
+            status,
+            scanned_by
+          `)
+          .order('scanned_at', { ascending: false })
+          .limit(10)
+
+        if (scansError) {
+          console.error('Error fetching live check-ins:', scansError)
+          return
+        }
+
+        // Get unique user IDs from scans
+        const userIds = [...new Set((scans || []).map((scan: any) => scan.scanned_by).filter(Boolean))]
+
+        // Fetch user data separately
+        let usersData: any[] = []
+        if (userIds.length > 0) {
+          const { data: users, error: usersError } = await supabase
+            .from('users')
+            .select('id, name')
+            .in('id', userIds)
+
+          if (usersError) {
+            console.error('Error fetching users for check-ins:', usersError)
+          } else {
+            usersData = users || []
+          }
+        }
+
+        // Create a map for quick user lookup
+        const usersMap = new Map(usersData.map(user => [user.id, user]))
+
+        // Transform the data
+        const liveCheckInData: LiveCheckIn[] = (scans || []).map((scan: any) => {
+          const user = usersMap.get(scan.scanned_by)
+          const scannedAt = new Date(scan.scanned_at)
+
+          return {
+            id: scan.id,
+            attendeeName: user?.name || 'Unknown User',
+            status: scan.status,
+            scannedAt: scan.scanned_at,
+            formattedTime: scannedAt.toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true
+            })
+          }
+        })
+
+        setLiveCheckIns(liveCheckInData)
+      } catch (error) {
+        console.error('Error fetching live check-ins:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchCheckInStats()
-  }, [supabase])
+    const fetchData = async () => {
+      await Promise.all([fetchCheckInStats(), fetchLiveCheckIns()])
+    }
+
+    fetchData()
+  }, [])
 
   const checkInPercentage = checkInStats.totalOrders > 0
     ? Math.round((checkInStats.totalCheckedIn / checkInStats.totalOrders) * 100)
@@ -151,22 +224,40 @@ export const CheckInPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {checkInData.map((checkin, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium text-xs sm:text-sm">{checkin.name}</TableCell>
-                    <TableCell>
-                      <Badge variant={checkin.status === "Success" ? "default" : "destructive"} className="text-xs">
-                        {checkin.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs sm:text-sm">{checkin.timestamp}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="text-xs">
-                        Manual Check-in
-                      </Button>
+                {liveCheckIns.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                      No recent check-ins
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  liveCheckIns.map((checkin) => (
+                    <TableRow key={checkin.id}>
+                      <TableCell className="font-medium text-xs sm:text-sm">{checkin.attendeeName}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            checkin.status === "valid" ? "default" :
+                            checkin.status === "used" ? "secondary" :
+                            "destructive"
+                          }
+                          className="text-xs"
+                        >
+                          {checkin.status === "valid" ? "Success" :
+                           checkin.status === "used" ? "Already Used" :
+                           checkin.status === "invalid" ? "Invalid" :
+                           checkin.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs sm:text-sm">{checkin.formattedTime}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" className="text-xs">
+                          Manual Check-in
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
