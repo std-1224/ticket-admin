@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
@@ -14,7 +15,8 @@ interface SharedLayoutProps {
 export function SharedLayout({ children }: SharedLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
-  
+  const { userRole } = useAuth()
+
   // Map pathnames to sidebar page IDs
   const getActivePageFromPath = (path: string) => {
     switch (path) {
@@ -32,6 +34,8 @@ export function SharedLayout({ children }: SharedLayoutProps) {
         return "Events"
       case "/my-events":
         return "My Events"
+      case "/role-management":
+        return "Role Management"
       default:
         return "Dashboard"
     }
@@ -65,6 +69,9 @@ export function SharedLayout({ children }: SharedLayoutProps) {
       case "My Events":
         router.push("/my-events")
         break
+      case "Role Management":
+        router.push("/role-management")
+        break
       default:
         router.push("/resumen")
     }
@@ -73,13 +80,13 @@ export function SharedLayout({ children }: SharedLayoutProps) {
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full">
-        <AppSidebar activePage={activePage} setActivePage={handlePageChange} />
+        <AppSidebar activePage={activePage} setActivePage={handlePageChange} userRole={userRole} />
         <main className="flex-1 overflow-auto">
           <div className="p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto">
             {children}
           </div>
         </main>
-        <MobileBottomNav activePage={activePage} setActivePage={handlePageChange} />
+        <MobileBottomNav activePage={activePage} setActivePage={handlePageChange} userRole={userRole} />
       </div>
     </SidebarProvider>
   )

@@ -6,16 +6,22 @@ import { cn } from "@/lib/utils"
 interface MobileBottomNavProps {
   activePage: string
   setActivePage: (page: string) => void
+  userRole?: string | null
 }
 
-export function MobileBottomNav({ activePage, setActivePage }: MobileBottomNavProps) {
-  const navItems = [
-    { id: "Dashboard", label: "Home", icon: Home },
-    { id: "Attendees", label: "Attendees", icon: Users },
-    { id: "Scanner", label: "Scanner", icon: QrCode },
-    { id: "Analytics", label: "Stats", icon: BarChart2 },
-    { id: "my-events", label: "All Events", icon: CalendarDays },
+export function MobileBottomNav({ activePage, setActivePage, userRole }: MobileBottomNavProps) {
+  const allNavItems = [
+    { id: "Dashboard", label: "Home", icon: Home, roles: ["admin"] },
+    { id: "Scanner", label: "Scanner", icon: QrCode, roles: ["admin", "scanner"] },
+    { id: "Attendees", label: "Attendees", icon: Users, roles: ["admin"] },
+    { id: "Analytics", label: "Stats", icon: BarChart2, roles: ["admin"] },
+    { id: "My Events", label: "Events", icon: CalendarDays, roles: ["admin"] },
   ]
+
+  // Filter nav items based on user role
+  const navItems = allNavItems.filter(item =>
+    !userRole || item.roles.includes(userRole)
+  )
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border md:hidden">

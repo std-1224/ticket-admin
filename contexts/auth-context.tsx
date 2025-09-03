@@ -13,6 +13,8 @@ interface AuthContextType {
   loading: boolean
   signOut: () => Promise<void>
   handleAuthError: (error: any) => void
+  userRole: string | null
+  setUserRole: (role: string | null) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -33,6 +35,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const router = useRouter()
 
   // Function to handle authentication errors (especially JWT expiration)
@@ -125,6 +128,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     loading,
     signOut,
     handleAuthError,
+    userRole,
+    setUserRole,
   }
 
   return (

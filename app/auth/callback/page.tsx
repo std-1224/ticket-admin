@@ -82,8 +82,14 @@ export default async function AuthCallbackPage({
             redirect(`/auth?error=${encodeURIComponent('Access denied. This application is restricted to administrators and scanner operators only.')}`)
           }
 
-          // Redirect to the main dashboard for authorized users
-          redirect('/resumen')
+          // Redirect based on user role
+          if (userRole === 'scanner') {
+            console.log('Redirecting scanner user to scanner page')
+            redirect('/escaner')
+          } else {
+            console.log('Redirecting admin user to dashboard')
+            redirect('/resumen')
+          }
         } catch (err) {
           console.error('Unexpected error checking user role:', err)
           redirect(`/auth?error=${encodeURIComponent('Failed to verify user permissions')}`)

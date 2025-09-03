@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart2, CheckCircle, Home, QrCode, Users, CalendarDays } from "lucide-react"
+import { BarChart2, CheckCircle, Home, QrCode, Users, CalendarDays, Shield } from "lucide-react"
 
 import {
   Sidebar,
@@ -16,19 +16,25 @@ import { UserMenu } from "@/components/auth/user-menu"
 interface AppSidebarProps {
   activePage: string
   setActivePage: (page: string) => void
+  userRole?: string | null
 }
 
-export function AppSidebar({ activePage, setActivePage }: AppSidebarProps) {
-  const menuItems = [
-    { id: "Dashboard", label: "Dashboard", icon: Home },
-    // { id: "Events", label: "Event", icon: CalendarDays },
-    { id: "My Events", label: "All Events", icon: CalendarDays },
-    { id: "Scanner", label: "Scanner", icon: QrCode },
-    { id: "Attendees", label: "Attendees", icon: Users },
-    { id: "Analytics", label: "Analytics", icon: BarChart2 },
-    
-    { id: "Registration", label: "Registration", icon: CheckCircle },
+export function AppSidebar({ activePage, setActivePage, userRole }: AppSidebarProps) {
+  // Define all menu items with role restrictions
+  const allMenuItems = [
+    { id: "Dashboard", label: "Dashboard", icon: Home, roles: ["admin"] },
+    { id: "My Events", label: "All Events", icon: CalendarDays, roles: ["admin"] },
+    { id: "Scanner", label: "Scanner", icon: QrCode, roles: ["admin", "scanner"] },
+    { id: "Attendees", label: "Attendees", icon: Users, roles: ["admin"] },
+    { id: "Analytics", label: "Analytics", icon: BarChart2, roles: ["admin"] },
+    { id: "Registration", label: "Registration", icon: CheckCircle, roles: ["admin"] },
+    { id: "Role Management", label: "Role Management", icon: Shield, roles: ["admin"] },
   ]
+
+  // Filter menu items based on user role
+  const menuItems = allMenuItems.filter(item =>
+    !userRole || item.roles.includes(userRole)
+  )
 
   return (
     <Sidebar variant="sidebar" collapsible="icon">
