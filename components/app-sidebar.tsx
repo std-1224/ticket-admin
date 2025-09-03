@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart2, CheckCircle, Home, QrCode, Users, CalendarDays, Shield } from "lucide-react"
+import { BarChart2, CheckCircle, Home, QrCode, Users, CalendarDays, Shield, Star } from "lucide-react"
 
 import {
   Sidebar,
@@ -26,6 +26,7 @@ export function AppSidebar({ activePage, setActivePage, userRole }: AppSidebarPr
     { id: "My Events", label: "All Events", icon: CalendarDays, roles: ["admin"] },
     { id: "Scanner", label: "Scanner", icon: QrCode, roles: ["admin", "scanner"] },
     { id: "Attendees", label: "Attendees", icon: Users, roles: ["admin"] },
+    { id: "VIP Guests", label: "VIP Guests", icon: Star, roles: ["admin"] },
     { id: "Analytics", label: "Analytics", icon: BarChart2, roles: ["admin"] },
     { id: "Registration", label: "Registration", icon: CheckCircle, roles: ["admin"] },
     { id: "Role Management", label: "Role Management", icon: Shield, roles: ["admin"] },

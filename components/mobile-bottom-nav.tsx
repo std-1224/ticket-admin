@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart2, Home, QrCode, Users, CalendarDays } from "lucide-react"
+import { BarChart2, Home, QrCode, Users, CalendarDays, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface MobileBottomNavProps {
@@ -14,6 +14,7 @@ export function MobileBottomNav({ activePage, setActivePage, userRole }: MobileB
     { id: "Dashboard", label: "Home", icon: Home, roles: ["admin"] },
     { id: "Scanner", label: "Scanner", icon: QrCode, roles: ["admin", "scanner"] },
     { id: "Attendees", label: "Attendees", icon: Users, roles: ["admin"] },
+    { id: "VIP Guests", label: "VIP", icon: Star, roles: ["admin"] },
     { id: "Analytics", label: "Stats", icon: BarChart2, roles: ["admin"] },
     { id: "My Events", label: "Events", icon: CalendarDays, roles: ["admin"] },
   ]

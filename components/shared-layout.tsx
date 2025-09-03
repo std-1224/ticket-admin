@@ -34,6 +34,8 @@ export function SharedLayout({ children }: SharedLayoutProps) {
         return "Events"
       case "/my-events":
         return "My Events"
+      case "/vip-guests":
+        return "VIP Guests"
       case "/role-management":
         return "Role Management"
       default:
@@ -68,6 +70,9 @@ export function SharedLayout({ children }: SharedLayoutProps) {
         break
       case "My Events":
         router.push("/my-events")
+        break
+      case "VIP Guests":
+        router.push("/vip-guests")
         break
       case "Role Management":
         router.push("/role-management")
