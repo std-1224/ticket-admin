@@ -141,6 +141,28 @@ export async function POST(request: NextRequest) {
       // Don't fail the request, just log the error
     }
 
+    // Update all order_items for this order to 'delivered' status
+    const { error: orderItemsUpdateError } = await supabase
+      .from('order_items')
+      .update({ status: 'delivered' })
+      .eq('order_id', order.id)
+
+    if (orderItemsUpdateError) {
+      console.error('Failed to update order_items status:', orderItemsUpdateError)
+      // Don't fail the request, just log the error
+    }
+
+    // Update transactions table status to 'delivered' using order_id
+    const { error: transactionUpdateError } = await supabase
+      .from('transactions')
+      .update({ status: 'delivered' })
+      .eq('order_id', order.id)
+
+    if (transactionUpdateError) {
+      console.error('Failed to update transaction status:', transactionUpdateError)
+      // Don't fail the request, just log the error
+    }
+
     return NextResponse.json({
       success: true,
       status: 'valid',

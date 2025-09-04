@@ -62,10 +62,11 @@ export function MyEventsContent() {
         throw eventsError
       }
 
-      // Then try to fetch ticket types for each event separately
+      // Then try to fetch ticket types and tickets sold for each event separately
       const eventsWithTickets = await Promise.all(
         (eventsData || []).map(async (event) => {
           try {
+            // Fetch ticket types
             const { data: ticketTypes, error: ticketError } = await supabase
               .from('ticket_types')
               .select('id, name, price, total_quantity, combo, description, created_at')
@@ -74,13 +75,33 @@ export function MyEventsContent() {
             // If ticket_types table doesn't exist or there's an error, just return event without tickets
             if (ticketError) {
               console.warn('Could not fetch ticket types for event:', event.id, ticketError)
-              return { ...event, ticket_types: [] }
+              return { ...event, ticket_types: [], total_tickets_sold: 0 }
             }
 
-            return { ...event, ticket_types: ticketTypes || [] }
+            // Fetch tickets sold count from order_items with status 'delivered'
+            let totalTicketsSold = 0
+            try {
+              const { data: orderItems, error: orderItemsError } = await supabase
+                .from('order_items')
+                .select('amount')
+                .eq('event_id', event.id)
+                .eq('status', 'delivered')
+
+              if (!orderItemsError && orderItems) {
+                totalTicketsSold = orderItems.reduce((sum, item) => sum + (item.amount || 1), 0)
+              }
+            } catch (error) {
+              console.warn('Could not fetch tickets sold for event:', event.id, error)
+            }
+
+            return {
+              ...event,
+              ticket_types: ticketTypes || [],
+              total_tickets_sold: totalTicketsSold
+            }
           } catch (error) {
             console.warn('Error fetching tickets for event:', event.id, error)
-            return { ...event, ticket_types: [] }
+            return { ...event, ticket_types: [], total_tickets_sold: 0 }
           }
         })
       )

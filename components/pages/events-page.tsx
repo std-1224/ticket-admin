@@ -6,6 +6,7 @@ import {
   CheckCircle,
   Edit,
   Eye,
+  Loader2,
   MapPin,
   PlusCircle,
   Save,
@@ -86,6 +87,14 @@ export const EventsPage = () => {
   const { user } = useAuth()
   const { toast } = useToast()
 
+  // Analytics state
+  const [analyticsData, setAnalyticsData] = useState({
+    ticketsSold: 0,
+    revenueGenerated: 0,
+    mostPopularTicket: 'No data'
+  })
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false)
+
   // Helper function to format date for display
   const formatDateForDisplay = (dateString: string) => {
     if (!dateString) return ''
@@ -111,6 +120,9 @@ export const EventsPage = () => {
   useEffect(() => {
     if (eventId && user) {
       fetchEventDetails()
+    } else if (user && !eventId) {
+      // Fetch overall analytics when no specific event is selected
+      fetchAnalyticsData('')
     }
   }, [eventId, user])
 
@@ -152,6 +164,9 @@ export const EventsPage = () => {
         console.error('Error fetching tickets:', await ticketsResponse.text())
       }
 
+      // Fetch analytics data for this event
+      await fetchAnalyticsData(eventId)
+
     } catch (error: any) {
       console.error('Error fetching event:', error)
       toast({
@@ -161,6 +176,28 @@ export const EventsPage = () => {
       })
     } finally {
       setLoadingEvent(false)
+    }
+  }
+
+  const fetchAnalyticsData = async (eventId: string) => {
+    setLoadingAnalytics(true)
+    try {
+      const url = eventId
+        ? `/api/analytics/quick-stats?event_id=${eventId}`
+        : '/api/analytics/quick-stats'
+      const response = await fetch(url)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          setAnalyticsData(result.data)
+        }
+      } else {
+        console.error('Error fetching analytics:', await response.text())
+      }
+    } catch (error: any) {
+      console.error('Error fetching analytics:', error)
+    } finally {
+      setLoadingAnalytics(false)
     }
   }
 
@@ -805,15 +842,33 @@ export const EventsPage = () => {
                 <CardContent className="space-y-3 sm:space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Tickets Sold</span>
-                    <span className="font-bold text-sm sm:text-base">{overviewStats.ticketsSold}</span>
+                    <span className="font-bold text-sm sm:text-base">
+                      {loadingAnalytics ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        analyticsData.ticketsSold.toLocaleString()
+                      )}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Revenue Generated</span>
-                    <span className="font-bold text-sm sm:text-base">${overviewStats.revenue.toLocaleString()}</span>
+                    <span className="font-bold text-sm sm:text-base">
+                      {loadingAnalytics ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        `$${analyticsData.revenueGenerated.toLocaleString()}`
+                      )}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Most Popular Ticket</span>
-                    <span className="font-bold text-sm sm:text-base">General Admission</span>
+                    <span className="font-bold text-sm sm:text-base">
+                      {loadingAnalytics ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        analyticsData.mostPopularTicket
+                      )}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
