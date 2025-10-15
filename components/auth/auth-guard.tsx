@@ -75,18 +75,14 @@ export function AuthGuard({ children }: AuthGuardProps) {
     // Check if current route is public auth route (access-denied page)
     const isPublicAuthRoute = PUBLIC_AUTH_ROUTES.some(route => pathname.startsWith(route))
 
-    console.log('AuthGuard - Path:', pathname, 'PublicAuth:', isPublicAuthRoute, 'User:', !!user, 'Role:', userRole)
-
     // If user is not authenticated, redirect to auth (except for auth page itself)
     if (!user && pathname !== '/auth') {
-      console.log('Redirecting to auth - no user')
       router.push('/auth')
       return
     }
 
     // If user is authenticated but doesn't have admin or master role, redirect to role-access page
     if (user && userRole && userRole !== 'admin' && userRole !== 'master' && !isPublicAuthRoute) {
-      console.log('Redirecting to role-access - non-admin/master role not allowed in admin app:', userRole)
       router.push('/role-access')
       return
     }
@@ -96,14 +92,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
     // If user is authenticated with admin/master role and trying to access auth pages, redirect to dashboard
     if (user && (userRole === 'admin' || userRole === 'master') && pathname === '/auth') {
-      console.log('Redirecting to dashboard - admin/master user on auth page')
       router.push('/resumen')
       return
     }
 
     // If user is authenticated with admin/master role and on root path, redirect to dashboard
     if (user && (userRole === 'admin' || userRole === 'master') && pathname === '/') {
-      console.log('Redirecting to dashboard - admin/master user on root')
       router.push('/resumen')
       return
     }

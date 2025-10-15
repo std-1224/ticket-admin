@@ -80,7 +80,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           console.error('Error getting session:', error)
           handleAuthError(error)
         } else {
-          console.log('Initial session loaded:', !!session)
           setSession(session)
           setUser(session?.user ?? null)
         }
@@ -97,7 +96,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
-        console.log('Auth state change:', event, !!session)
 
         // Handle token refresh failures
         if (event === 'TOKEN_REFRESHED' && !session) {
