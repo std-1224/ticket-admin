@@ -5,23 +5,34 @@ export async function GET(request: NextRequest) {
   try {
     console.log("📊 Ticket types analytics API called")
 
-    // First, fetch all ticket types from the ticket_types table
-    const { data: ticketTypes, error: ticketTypesError } = await supabase
-      .from('ticket_types')
-      .select('id, name, price')
+    // Get actual ticket sales data from event_order_items
+    const { data: orderItems, error: orderItemsError } = await supabase
+      .from('event_order_items')
+      .select(`
+        id,
+        ticket_type_id,
+        amount,
+        price_paid,
+        ticket_types!inner(
+          id,
+          name,
+          price
+        )
+      `)
+      .eq('status', 'delivered')
 
-    if (ticketTypesError) {
-      console.error('❌ Error fetching ticket types:', ticketTypesError)
+    if (orderItemsError) {
+      console.error('❌ Error fetching order items:', orderItemsError)
       return NextResponse.json(
-        { error: 'Failed to fetch ticket types', details: ticketTypesError.message },
+        { error: 'Failed to fetch order items', details: orderItemsError.message },
         { status: 500 }
       )
     }
 
-    console.log("📊 Ticket types fetched:", { count: ticketTypes?.length })
+    console.log("📊 Order items fetched:", { count: orderItems?.length })
 
-    if (!ticketTypes || ticketTypes.length === 0) {
-      console.log("📊 No ticket types found")
+    if (!orderItems || orderItems.length === 0) {
+      console.log("📊 No order items found")
       return NextResponse.json({
         success: true,
         data: [],
@@ -34,45 +45,48 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Since tickets table doesn't exist, let's get orders to calculate revenue
-    const { data: orders, error: ordersError } = await supabase
-      .from('event_orders')
-      .select('id, total_price')
-      .in('status', ['pending', 'paid', 'delivered'])
+    // Calculate ticket sales by type
+    const ticketTypeStats = new Map<string, {
+      id: string,
+      name: string,
+      quantity: number,
+      revenue: number
+    }>()
 
-    if (ordersError) {
-      console.error('❌ Error fetching orders:', ordersError)
-      return NextResponse.json(
-        { error: 'Failed to fetch orders', details: ordersError.message },
-        { status: 500 }
-      )
-    }
+    orderItems.forEach(item => {
+      const ticketTypeId = item.ticket_type_id
+      const ticketTypeName = (item.ticket_types as any)?.name || 'Unknown'
+      const amount = item.amount || 1
+      const revenue = (item.price_paid || 0) * amount
 
-    console.log("📊 Orders fetched:", { count: orders?.length })
+      console.log("📊 Processing order item:", {
+        ticketTypeId,
+        ticketTypeName,
+        amount,
+        pricePaid: item.price_paid,
+        revenue
+      })
 
-    const totalOrders = orders?.length || 0
-
-    // Create realistic distribution based on actual ticket types and orders
-    const ticketTypesData = ticketTypes.map((ticketType, index) => {
-      // Distribute orders among ticket types with realistic percentages
-      let percentage = 0
-      switch (index % 4) {
-        case 0: percentage = 0.5; break;  // 50% for first type
-        case 1: percentage = 0.3; break;  // 30% for second type
-        case 2: percentage = 0.15; break; // 15% for third type
-        case 3: percentage = 0.05; break; // 5% for fourth type
-        default: percentage = 0.1; break;
-      }
-
-      const quantity = Math.ceil(totalOrders * percentage)
-
-      return {
-        name: ticketType.name,
-        quantity: quantity
+      if (ticketTypeStats.has(ticketTypeId)) {
+        const existing = ticketTypeStats.get(ticketTypeId)!
+        existing.quantity += amount
+        existing.revenue += revenue
+      } else {
+        ticketTypeStats.set(ticketTypeId, {
+          id: ticketTypeId,
+          name: ticketTypeName,
+          quantity: amount,
+          revenue: revenue
+        })
       }
     })
 
-    // Add colors to the data
+    console.log("📊 Ticket type stats calculated:", {
+      totalTypes: ticketTypeStats.size,
+      stats: Array.from(ticketTypeStats.values())
+    })
+
+    // Convert Map to array and add colors
     const colors = [
       "hsl(var(--chart-1))",
       "hsl(var(--chart-2))",
@@ -81,18 +95,24 @@ export async function GET(request: NextRequest) {
       "hsl(var(--chart-5))"
     ]
 
-    const finalTicketTypesData = ticketTypesData.map((type, index) => ({
+    const ticketTypesArray = Array.from(ticketTypeStats.values())
+    const finalTicketTypesData = ticketTypesArray.map((type, index) => ({
       name: type.name,
       value: type.quantity,
+      revenue: type.revenue,
       fill: colors[index % colors.length]
     }))
 
     // Sort by quantity descending
     finalTicketTypesData.sort((a, b) => b.value - a.value)
 
+    const totalTickets = finalTicketTypesData.reduce((sum, type) => sum + type.value, 0)
+    const totalRevenue = finalTicketTypesData.reduce((sum, type) => sum + type.revenue, 0)
+
     console.log("✅ Ticket types data prepared:", {
       totalTypes: finalTicketTypesData.length,
-      totalTickets: finalTicketTypesData.reduce((sum, type) => sum + type.value, 0),
+      totalTickets: totalTickets,
+      totalRevenue: totalRevenue,
       ticketNames: finalTicketTypesData.map(t => t.name)
     })
 
@@ -101,7 +121,8 @@ export async function GET(request: NextRequest) {
       data: finalTicketTypesData,
       summary: {
         totalTypes: finalTicketTypesData.length,
-        totalTickets: finalTicketTypesData.reduce((sum, type) => sum + type.value, 0),
+        totalTickets: totalTickets,
+        totalRevenue: totalRevenue,
         mostPopular: finalTicketTypesData[0]?.name || 'No data'
       }
     })

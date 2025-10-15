@@ -61,8 +61,6 @@ export const AnalyticsPage = () => {
     fetchAllData();
   }, []);
 
-
-  console.log("salesData: ", salesData)
   const fetchSalesData = async () => {
     try {
       const response = await fetch("/api/analytics/daily-sales?days=30");
