@@ -36,7 +36,7 @@ export const CheckInPage = () => {
       try {
         // Get orders with delivered status (checked in)
         const { data: deliveredOrders, error: deliveredError } = await supabase
-          .from('orders')
+          .from('event_orders')
           .select('id')
           .eq('status', 'delivered')
 
@@ -47,7 +47,7 @@ export const CheckInPage = () => {
 
         // Get orders with pending status (pending check-in)
         const { data: pendingOrders, error: pendingError } = await supabase
-          .from('orders')
+          .from('event_orders')
           .select('id')
           .eq('status', 'pending')
 
@@ -58,7 +58,7 @@ export const CheckInPage = () => {
 
         // Get total orders (delivered + pending + paid)
         const { data: allOrders, error: allError } = await supabase
-          .from('orders')
+          .from('event_orders')
           .select('id')
           .in('status', ['delivered', 'pending', 'paid'])
 
@@ -85,7 +85,7 @@ export const CheckInPage = () => {
       try {
         // Fetch recent scans with user information
         const { data: scans, error: scansError } = await supabase
-          .from('scans')
+          .from('event_scans')
           .select(`
             id,
             scanned_at,
@@ -107,7 +107,7 @@ export const CheckInPage = () => {
         let usersData: any[] = []
         if (userIds.length > 0) {
           const { data: users, error: usersError } = await supabase
-            .from('users')
+            .from('profiles')
             .select('id, name')
             .in('id', userIds)
 

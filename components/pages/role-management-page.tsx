@@ -36,7 +36,7 @@ export function RoleManagementPage() {
     try {
       setLoading(true)
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('id, email, name, role, created_at')
         .in('role', ['admin', 'scanner'])
         .order('created_at', { ascending: false })
@@ -77,7 +77,7 @@ export function RoleManagementPage() {
 
       // Check if user already exists
       const { data: existingUser, error: checkError } = await supabase
-        .from('users')
+        .from('profiles')
         .select('id, email, name, role, created_at')
         .eq('email', newUserEmail.trim())
         .single()
@@ -91,7 +91,7 @@ export function RoleManagementPage() {
       if (existingUser) {
         // User exists, update their role
         const { error: updateError } = await supabase
-          .from('users')
+          .from('profiles')
           .update({ role: newUserRole })
           .eq('id', existingUser.id)
 
@@ -133,7 +133,7 @@ export function RoleManagementPage() {
         }
 
         const { data: insertedUser, error: insertError } = await supabase
-          .from('users')
+          .from('profiles')
           .insert([newUser])
           .select('id, email, name, role, created_at')
           .single()
@@ -193,7 +193,7 @@ export function RoleManagementPage() {
       )
 
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update({ role: newRole })
         .eq('id', userId)
 
@@ -236,7 +236,7 @@ export function RoleManagementPage() {
       setUsers(prevUsers => prevUsers.filter(user => user.id !== userId))
 
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update({ role: 'buyer' })
         .eq('id', userId)
 

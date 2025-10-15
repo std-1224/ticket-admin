@@ -22,7 +22,7 @@ export class AttendeesAPI {
           name,
           email,
           created_at,
-          order_items!inner(
+          event_order_items!inner(
             id,
             event_id,
             user_id,
@@ -31,13 +31,13 @@ export class AttendeesAPI {
             created_at,
             price_paid
           ),
-          scans(
+          event_scans(
             id,
             status,
             scanned_at
           )
         `)
-        .eq('order_items.event_id', eventId)
+        .eq('event_order_items.event_id', eventId)
 
       // Apply search filter
       if (filters.search) {
@@ -53,7 +53,7 @@ export class AttendeesAPI {
       const { count } = await supabase
         .from('attendees')
         .select('id', { count: 'exact', head: true })
-        .eq('order_items.event_id', eventId)
+        .eq('event_order_items.event_id', eventId)
 
       // Apply pagination
       const offset = (page - 1) * limit
@@ -72,7 +72,7 @@ export class AttendeesAPI {
       let purchasesData: any[] = []
       if (purchaserIds.length > 0) {
         const { data: purchases } = await supabase
-          .from('orders')
+          .from('event_orders')
           .select('*')
           .eq('event_id', eventId)
           .in('user_id', purchaserIds)
@@ -131,7 +131,7 @@ export class AttendeesAPI {
     try {
       // First, get all purchases for the event
       let purchasesQuery = supabase
-        .from('orders')
+        .from('event_orders')
         .select(`
           id,
           user_id,
@@ -140,7 +140,7 @@ export class AttendeesAPI {
           status,
           created_at,
           payment_method,
-          users!user_id(
+          profiles!user_id(
             id,
             name,
             email
@@ -160,7 +160,7 @@ export class AttendeesAPI {
 
       // Get total count
       const { count } = await supabase
-        .from('orders')
+        .from('event_orders')
         .select('id', { count: 'exact', head: true })
         .eq('event_id', eventId)
 
@@ -191,7 +191,7 @@ export class AttendeesAPI {
       // Get all tickets for these purchases
       const userIds = purchasesData.map(p => p.user_id)
       const { data: ticketsData, error: ticketsError } = await supabase
-        .from("order_items")
+        .from("event_order_items")
         .select(`
           id,
           event_id,
@@ -202,7 +202,7 @@ export class AttendeesAPI {
             name,
             email
           ),
-          scans(
+          event_scans(
             id,
             status,
             scanned_at
@@ -325,7 +325,7 @@ export class AttendeesAPI {
           name,
           email,
           created_at,
-          order_items!inner(
+          event_order_items!inner(
             id,
             event_id,
             user_id,
@@ -334,7 +334,7 @@ export class AttendeesAPI {
             status,
             created_at,
             price_paid,
-            orders!order_id(
+            event_orders!order_id(
               id,
               status,
               total_price,
@@ -342,7 +342,7 @@ export class AttendeesAPI {
               created_at
             )
           ),
-          scans(
+          event_scans(
             id,
             status,
             scanned_at

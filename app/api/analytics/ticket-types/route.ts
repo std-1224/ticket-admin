@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     // Since tickets table doesn't exist, let's get orders to calculate revenue
     const { data: orders, error: ordersError } = await supabase
-      .from('orders')
+      .from('event_orders')
       .select('id, total_price')
       .in('status', ['pending', 'paid', 'delivered'])
 

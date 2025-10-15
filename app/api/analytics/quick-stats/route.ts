@@ -10,9 +10,9 @@ export async function GET(request: NextRequest) {
     
     console.log("📊 Query params:", { eventId })
 
-    // Base query for order_items with delivered status
+    // Base query for event_order_items with delivered status
     let orderItemsQuery = supabase
-      .from('order_items')
+      .from('event_order_items')
       .select(`
         id,
         price_paid,

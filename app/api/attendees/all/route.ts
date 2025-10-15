@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
       page, limit, search, paymentStatus, checkinStatus
     })
 
-    // Build the query for orders without joins first
+    // Build the query for event_orders without joins first
     let query = supabaseAdmin
-      .from('orders')
+      .from('event_orders')
       .select(`
         id,
         user_id,
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     if (search && search.trim()) {
       const searchTerm = search.trim()
       console.log('Applying search filter for:', searchTerm)
-      query = query.or(`users.name.ilike.%${searchTerm}%,users.email.ilike.%${searchTerm}%`)
+      query = query.or(`profiles.name.ilike.%${searchTerm}%,profiles.email.ilike.%${searchTerm}%`)
     }
 
     // Exclude waiting_payment orders by default
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     if (checkinStatus === 'checked_in') {
       // Get orders that have valid scans
       const { data: validScans } = await supabaseAdmin
-        .from('scans')
+        .from('event_scans')
         .select('order_id')
         .eq('status', 'valid')
 
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     let usersData: any[] = []
     if (userIds.length > 0) {
       const { data: users, error: usersError } = await supabaseAdmin
-        .from('users')
+        .from('profiles')
         .select('id, name, email, avatar_url')
         .in('id', userIds)
 
@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
 
       if (orderIds.length > 0) {
         const { data: scans } = await supabaseAdmin
-          .from('scans')
+          .from('event_scans')
           .select('id, order_id, status, scanned_at')
           .in('order_id', orderIds)
           .eq('status', 'valid')
@@ -196,19 +196,19 @@ export async function GET(request: NextRequest) {
     // Final filtered attendees
     let filteredAttendees = attendeesWithScans
 
-    // Calculate real stats from orders table
+    // Calculate real stats from event_orders table
     const { data: deliveredOrders, error: deliveredError } = await supabaseAdmin
-      .from('orders')
+      .from('event_orders')
       .select('total_price')
       .eq('status', 'delivered')
 
     const { data: pendingOrders, error: pendingError } = await supabaseAdmin
-      .from('orders')
+      .from('event_orders')
       .select('total_price')
       .eq('status', 'pending')
 
     const { count: totalCount } = await supabaseAdmin
-      .from('orders')
+      .from('event_orders')
       .select('id', { count: 'exact', head: true })
 
     if (deliveredError) {

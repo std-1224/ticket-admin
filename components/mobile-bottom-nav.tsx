@@ -11,15 +11,15 @@ interface MobileBottomNavProps {
 
 export function MobileBottomNav({ activePage, setActivePage, userRole }: MobileBottomNavProps) {
   const allNavItems = [
-    { id: "Dashboard", label: "Home", icon: Home, roles: ["admin"] },
-    { id: "Scanner", label: "Scanner", icon: QrCode, roles: ["admin", "scanner"] },
-    { id: "Attendees", label: "Attendees", icon: Users, roles: ["admin"] },
-    { id: "VIP Guests", label: "VIP", icon: Star, roles: ["admin"] },
-    { id: "Analytics", label: "Stats", icon: BarChart2, roles: ["admin"] },
-    { id: "My Events", label: "Events", icon: CalendarDays, roles: ["admin"] },
+    { id: "Dashboard", label: "Home", icon: Home, roles: ["admin", "master"] },
+    { id: "Scanner", label: "Scanner", icon: QrCode, roles: ["admin", "master"] },
+    { id: "Attendees", label: "Attendees", icon: Users, roles: ["admin", "master"] },
+    { id: "VIP Guests", label: "VIP", icon: Star, roles: ["admin", "master"] },
+    { id: "Analytics", label: "Stats", icon: BarChart2, roles: ["admin", "master"] },
+    { id: "My Events", label: "Events", icon: CalendarDays, roles: ["admin", "master"] },
   ]
 
-  // Filter nav items based on user role
+  // Filter nav items based on user role - only show items for admin/master roles
   const navItems = allNavItems.filter(item =>
     !userRole || item.roles.includes(userRole)
   )

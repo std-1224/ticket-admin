@@ -22,17 +22,17 @@ interface AppSidebarProps {
 export function AppSidebar({ activePage, setActivePage, userRole }: AppSidebarProps) {
   // Define all menu items with role restrictions
   const allMenuItems = [
-    { id: "Dashboard", label: "Dashboard", icon: Home, roles: ["admin"] },
-    { id: "My Events", label: "All Events", icon: CalendarDays, roles: ["admin"] },
-    { id: "Scanner", label: "Scanner", icon: QrCode, roles: ["admin", "scanner"] },
-    { id: "Attendees", label: "Attendees", icon: Users, roles: ["admin"] },
-    { id: "VIP Guests", label: "VIP Guests", icon: Star, roles: ["admin"] },
-    { id: "Analytics", label: "Analytics", icon: BarChart2, roles: ["admin"] },
-    { id: "Registration", label: "Registration", icon: CheckCircle, roles: ["admin"] },
-    { id: "Role Management", label: "Role Management", icon: Shield, roles: ["admin"] },
+    { id: "Dashboard", label: "Dashboard", icon: Home, roles: ["admin", "master"] },
+    { id: "My Events", label: "All Events", icon: CalendarDays, roles: ["admin", "master"] },
+    { id: "Scanner", label: "Scanner", icon: QrCode, roles: ["admin", "master"] },
+    { id: "Attendees", label: "Attendees", icon: Users, roles: ["admin", "master"] },
+    { id: "VIP Guests", label: "VIP Guests", icon: Star, roles: ["admin", "master"] },
+    { id: "Analytics", label: "Analytics", icon: BarChart2, roles: ["admin", "master"] },
+    { id: "Registration", label: "Registration", icon: CheckCircle, roles: ["admin", "master"] },
+    { id: "Role Management", label: "Role Management", icon: Shield, roles: ["admin", "master"] },
   ]
 
-  // Filter menu items based on user role
+  // Filter menu items based on user role - only show items for admin/master roles
   const menuItems = allMenuItems.filter(item =>
     !userRole || item.roles.includes(userRole)
   )

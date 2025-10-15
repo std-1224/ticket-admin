@@ -119,7 +119,7 @@ export function CustomAuthForm() {
   const saveUserToDatabase = async (authUser: any, name: string, role: string) => {
     try {
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .insert([
           {
             id: authUser.id,

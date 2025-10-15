@@ -18,12 +18,12 @@ export async function GET(request: NextRequest) {
   try {
     // Calculate real stats from orders table
     const { data: deliveredOrders, error: deliveredError } = await supabaseAdmin
-      .from('orders')
+      .from('event_orders')
       .select('total_price')
       .eq('status', 'delivered')
 
     const { data: pendingOrders, error: pendingError } = await supabaseAdmin
-      .from('orders')
+      .from('event_orders')
       .select('total_price')
       .eq('status', 'pending')
 

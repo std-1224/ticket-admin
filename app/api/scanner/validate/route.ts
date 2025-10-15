@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     // Validate scanner credentials first
     const { data: scannerUser, error: scannerError } = await supabase
-      .from('users')
+      .from('profiles')
       .select('id, name, role')
       .eq('id', scanner_id)
       .single()
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     // Find the order by QR code
     const { data: order, error: orderError } = await supabase
-      .from("orders")
+      .from("event_orders")
       .select('*')
       .eq('qr_code', qr_code)
       .single()
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     // If order not found - record invalid scan and return
     if (orderError || !order) {
       // Record invalid scan - order not found by QR code
-      await supabase.from('scans').insert({
+      await supabase.from('event_scans').insert({
         order_id: null, // No order found
         scanned_by: scanner_id,
         status: 'invalid'
@@ -61,14 +61,14 @@ export async function POST(request: NextRequest) {
 
     // Check if this order has already been scanned (order_id exists in scans table)
     const { data: existingScans } = await supabase
-      .from('scans')
+      .from('event_scans')
       .select('id')
       .eq('order_id', order.id)
       .limit(1)
 
     if (existingScans && existingScans.length > 0) {
       // Record this as 'used' scan attempt
-      await supabase.from('scans').insert({
+      await supabase.from('event_scans').insert({
         order_id: order.id,
         scanned_by: scanner_id,
         status: 'used'
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     // Check if order is paid (not allow 'paid' status only)
     if (order.status === 'paid') {
       // Record invalid scan - order not paid
-      await supabase.from('scans').insert({
+      await supabase.from('event_scans').insert({
         order_id: order.id,
         scanned_by: scanner_id,
         status: 'used'
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
       })
     }
     // Record successful scan in scans table and update order status to 'delivered'
-    const { error: scanInsertError } = await supabase.from('scans').insert({
+    const { error: scanInsertError } = await supabase.from('event_scans').insert({
       order_id: order.id,
       scanned_by: scanner_id,
       status: 'valid'
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
 
     // Update order status to 'delivered' if scan is valid
     const { error: updateError } = await supabase
-      .from('orders')
+      .from('event_orders')
       .update({ status: 'delivered' })
       .eq('id', order.id)
 
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
 
     // Update all order_items for this order to 'delivered' status
     const { error: orderItemsUpdateError } = await supabase
-      .from('order_items')
+      .from('event_order_items')
       .update({ status: 'delivered' })
       .eq('order_id', order.id)
 
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
 
     // Update transactions table status to 'delivered' using order_id
     const { error: transactionUpdateError } = await supabase
-      .from('transactions')
+      .from('event_transactions')
       .update({ status: 'delivered' })
       .eq('order_id', order.id)
 

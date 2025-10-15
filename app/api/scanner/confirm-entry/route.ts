@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     // Validate scanner credentials
     const { data: scannerUser, error: scannerError } = await supabase
-      .from('users')
+      .from('profiles')
       .select('id, name, role')
       .eq('id', scanner_id)
       .eq('role', 'scanner')
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     // Get the order
     const { data: order, error: orderError } = await supabase
-      .from("orders")
+      .from("event_orders")
       .select('id, status')
       .eq('id', order_id)
       .single()
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     // Find the most recent 'valid' scan for this order
     const { data: validScan, error: scanError } = await supabase
-      .from('scans')
+      .from('event_scans')
       .select('id')
       .eq('order_id', order_id)
       .eq('status', 'valid')
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     // Update the scan status from 'valid' to 'used'
     const { error: updateError } = await supabase
-      .from('scans')
+      .from('event_scans')
       .update({ status: 'used' })
       .eq('id', validScan.id)
 

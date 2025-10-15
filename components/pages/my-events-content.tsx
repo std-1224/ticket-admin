@@ -82,7 +82,7 @@ export function MyEventsContent() {
             let totalTicketsSold = 0
             try {
               const { data: orderItems, error: orderItemsError } = await supabase
-                .from('order_items')
+                .from('event_order_items')
                 .select('amount')
                 .eq('event_id', event.id)
                 .eq('status', 'delivered')

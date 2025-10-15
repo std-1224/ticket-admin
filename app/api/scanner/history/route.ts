@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
     const scannerId = searchParams.get('scannerId')
     const limit = parseInt(searchParams.get('limit') || '50')
 
-    // First get scans without joins to avoid relationship issues
+    // First get event_scans without joins to avoid relationship issues
     let query = supabase
-      .from('scans')
+      .from('event_scans')
       .select('*')
       .order('scanned_at', { ascending: false })
       .limit(limit)
@@ -43,11 +43,11 @@ export async function GET(request: NextRequest) {
 
 
 
-      // First: Fetch orders data using order_id
+      // First: Fetch event_orders data using order_id
       let ordersData: any[] = []
       if (orderIds.length > 0) {
         const { data: orders } = await supabase
-          .from('orders')
+          .from('event_orders')
           .select(`
             id,
             qr_code,
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
           // Fetch order_items for each order
           const orderItemsPromises = orderUserPairs.map(async ({ user_id, order_id }) => {
             const { data: items } = await supabase
-              .from('order_items')
+              .from('event_order_items')
               .select('*')
               .eq('user_id', user_id)
               .eq('order_id', order_id)
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
 
         if (userIds.length > 0) {
           const { data: users } = await supabase
-            .from('users')
+            .from('profiles')
             .select('id, name, email')
             .in('id', userIds)
 
@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
       let scannersData: any[] = []
       if (scannerIds.length > 0) {
         const { data: scanners } = await supabase
-          .from('users')
+          .from('profiles')
           .select('id, name, email')
           .in('id', scannerIds)
 
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: scan, error } = await supabase
-      .from('scans')
+      .from('event_scans')
       .insert({
         order_id,
         scanned_by,

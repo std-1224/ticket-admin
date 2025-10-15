@@ -1,8 +1,8 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. Users table
-CREATE TABLE users (
+-- 1. Profiles table (anteriormente Users)
+CREATE TABLE profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE events (
     time TIME,
     location TEXT
     image_url TEXT,
-    created_by UUID NOT NULL REFERENCES users(id),
+    created_by UUID NOT NULL REFERENCES profiles(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -39,7 +39,7 @@ CREATE TABLE ticket_types (
 CREATE TABLE tickets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     ticket_type_id UUID NOT NULL REFERENCES ticket_types(id),
-    purchaser_id UUID NOT NULL REFERENCES users(id),
+    purchaser_id UUID NOT NULL REFERENCES profiles(id),
     event_id UUID NOT NULL REFERENCES events(id),
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'validated')),
     scanned_at TIMESTAMP WITH TIME ZONE,
@@ -57,11 +57,11 @@ CREATE TABLE attendees (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 6. Scans table
-CREATE TABLE scans (
+-- 6. Event Scans table (anteriormente Scans)
+CREATE TABLE event_scans (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     order_item_id UUID NOT NULL REFERENCES tickets(id),
-    scanned_by UUID NOT NULL REFERENCES users(id),
+    scanned_by UUID NOT NULL REFERENCES profiles(id),
     scanned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     status TEXT NOT NULL CHECK (status IN ('valid', 'used', 'invalid'))
 );
@@ -81,8 +81,8 @@ LEFT JOIN tickets t ON e.id = t.event_id
 GROUP BY e.id, e.title;
 
 -- Indexes for performance
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_profiles_email ON profiles(email);
+CREATE INDEX idx_profiles_role ON profiles(role);
 CREATE INDEX idx_events_date ON events(date);
 CREATE INDEX idx_events_created_by ON events(created_by);
 CREATE INDEX idx_ticket_types_event_id ON ticket_types(event_id);
@@ -91,9 +91,9 @@ CREATE INDEX idx_tickets_event_id ON tickets(event_id);
 CREATE INDEX idx_tickets_status ON tickets(status);
 CREATE INDEX idx_tickets_qr_code ON tickets(qr_code);
 CREATE INDEX idx_attendees_order_item_id ON attendees(order_item_id);
-CREATE INDEX idx_scans_order_item_id ON scans(order_item_id);
-CREATE INDEX idx_scans_scanned_by ON scans(scanned_by);
-CREATE INDEX idx_scans_scanned_at ON scans(scanned_at);
+CREATE INDEX idx_event_scans_order_item_id ON event_scans(order_item_id);
+CREATE INDEX idx_event_scans_scanned_by ON event_scans(scanned_by);
+CREATE INDEX idx_event_scans_scanned_at ON event_scans(scanned_at);
 
 -- Function to generate unique QR codes
 CREATE OR REPLACE FUNCTION generate_qr_code()

@@ -134,19 +134,50 @@ export async function getOptionalAuth() {
 }
 
 /**
+ * Check if user has admin or master role (for ticket-admin app)
+ * Redirects to role-access page if user doesn't have admin or master role
+ */
+export async function requireAdminRole() {
+  const user = await requireAuth()
+
+  // Get user profile from database to check role
+  const supabase = await createServerSupabaseClient()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const userRole = profile?.role || 'unknown'
+
+  if (userRole !== 'admin' && userRole !== 'master') {
+    redirect('/role-access')
+  }
+
+  return user
+}
+
+/**
  * Check if user has a specific role
- * Note: This assumes you have a 'role' field in your user metadata or a separate roles table
+ * Note: This checks the role from the profiles table in the database
  */
 export async function requireRole(requiredRole: string) {
   const user = await requireAuth()
-  
-  // Check user metadata for role
-  const userRole = user.user_metadata?.role || user.app_metadata?.role
-  
+
+  // Get user profile from database to check role
+  const supabase = await createServerSupabaseClient()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const userRole = profile?.role || 'unknown'
+
   if (userRole !== requiredRole) {
-    redirect('/unauthorized') // You might want to create this page
+    redirect('/role-access')
   }
-  
+
   return user
 }
 

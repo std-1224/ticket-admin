@@ -5,16 +5,17 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { supabase } from '@/lib/supabase'
 
-// Define routes with their required roles
+// Define routes with their required roles (admin and master allowed)
 const ROUTE_PERMISSIONS = {
-  '/resumen': ['admin'],
-  '/my-events': ['admin'],
-  '/escaner': ['admin', 'scanner'],
-  '/asistentes': ['admin'],
-  '/registro': ['admin'],
-  '/analiticas': ['admin'],
-  '/eventos': ['admin'],
-  '/role-management': ['admin']
+  '/resumen': ['admin', 'master'],
+  '/my-events': ['admin', 'master'],
+  '/escaner': ['admin', 'master'],
+  '/asistentes': ['admin', 'master'],
+  '/registro': ['admin', 'master'],
+  '/analiticas': ['admin', 'master'],
+  '/eventos': ['admin', 'master'],
+  '/role-management': ['admin', 'master'],
+  '/vip-guests': ['admin', 'master']
 }
 
 // Define all protected routes (require admin or scanner role)
@@ -22,7 +23,8 @@ const PROTECTED_ROUTES = Object.keys(ROUTE_PERMISSIONS)
 
 // Routes that authenticated users can access regardless of role
 const PUBLIC_AUTH_ROUTES = [
-  '/access-denied'
+  '/access-denied',
+  '/role-access'
 ]
 
 
@@ -44,7 +46,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
       try {
         const { data: userData, error } = await supabase
-          .from('users')
+          .from('profiles')
           .select('role')
           .eq('id', user.id)
           .single()
@@ -82,44 +84,27 @@ export function AuthGuard({ children }: AuthGuardProps) {
       return
     }
 
-    // If user is authenticated but has buyer role, redirect to access denied (except if already on access-denied)
-    if (user && userRole === 'buyer' && !isPublicAuthRoute) {
-      console.log('Redirecting to access denied - buyer role not allowed')
-      router.push('/access-denied')
+    // If user is authenticated but doesn't have admin or master role, redirect to role-access page
+    if (user && userRole && userRole !== 'admin' && userRole !== 'master' && !isPublicAuthRoute) {
+      console.log('Redirecting to role-access - non-admin/master role not allowed in admin app:', userRole)
+      router.push('/role-access')
       return
     }
 
-    // Check specific route permissions for admin/scanner users
-    if (user && userRole && (userRole === 'admin' || userRole === 'scanner')) {
-      const routePermissions = ROUTE_PERMISSIONS[pathname as keyof typeof ROUTE_PERMISSIONS]
-      if (routePermissions && !routePermissions.includes(userRole)) {
-        console.log(`Access denied - ${userRole} role not allowed for ${pathname}`)
-        router.push('/access-denied')
-        return
-      }
-    }
+    // Admin users have access to all routes in the admin panel
+    // No additional route-specific permission checks needed since only admins are allowed
 
-    // If user is authenticated with proper role and trying to access auth pages, redirect appropriately
-    if (user && userRole && userRole !== 'buyer' && pathname === '/auth') {
-      if (userRole === 'scanner') {
-        console.log('Redirecting to scanner - scanner user on auth page')
-        router.push('/escaner')
-      } else {
-        console.log('Redirecting to dashboard - admin user on auth page')
-        router.push('/resumen')
-      }
+    // If user is authenticated with admin/master role and trying to access auth pages, redirect to dashboard
+    if (user && (userRole === 'admin' || userRole === 'master') && pathname === '/auth') {
+      console.log('Redirecting to dashboard - admin/master user on auth page')
+      router.push('/resumen')
       return
     }
 
-    // If user is authenticated with proper role and on root path, redirect appropriately
-    if (user && userRole && userRole !== 'buyer' && pathname === '/') {
-      if (userRole === 'scanner') {
-        console.log('Redirecting to scanner - scanner user on root')
-        router.push('/escaner')
-      } else {
-        console.log('Redirecting to dashboard - admin user on root')
-        router.push('/resumen')
-      }
+    // If user is authenticated with admin/master role and on root path, redirect to dashboard
+    if (user && (userRole === 'admin' || userRole === 'master') && pathname === '/') {
+      console.log('Redirecting to dashboard - admin/master user on root')
+      router.push('/resumen')
       return
     }
 

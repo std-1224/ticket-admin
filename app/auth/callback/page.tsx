@@ -32,7 +32,7 @@ export default async function AuthCallbackPage({
         // Save user to database if not already exists
         try {
           const { error: dbError } = await supabase
-            .from('users')
+            .from('profiles')
             .upsert([
               {
                 id: data.user.id,
@@ -61,7 +61,7 @@ export default async function AuthCallbackPage({
         // Check user role from database to get the most up-to-date role
         try {
           const { data: userData, error: userError } = await supabase
-            .from('users')
+            .from('profiles')
             .select('role')
             .eq('id', data.user.id)
             .single()
@@ -74,22 +74,16 @@ export default async function AuthCallbackPage({
           const userRole = userData?.role || 'buyer'
           console.log('User role:', userRole)
 
-          // Check if user has admin or scanner role
-          if (userRole !== 'admin' && userRole !== 'scanner') {
+          // Check if user has admin or master role (only admins/masters allowed in admin app)
+          if (userRole !== 'admin' && userRole !== 'master') {
             console.log('Access denied - user role is:', userRole)
-            // Sign out the user and redirect to auth with error message
-            await supabase.auth.signOut()
-            redirect(`/auth?error=${encodeURIComponent('Access denied. This application is restricted to administrators and scanner operators only.')}`)
+            // Redirect to role-access page with user information
+            redirect('/role-access')
           }
 
-          // Redirect based on user role
-          if (userRole === 'scanner') {
-            console.log('Redirecting scanner user to scanner page')
-            redirect('/escaner')
-          } else {
-            console.log('Redirecting admin user to dashboard')
-            redirect('/resumen')
-          }
+          // Redirect admin user to dashboard
+          console.log('Redirecting admin user to dashboard')
+          redirect('/resumen')
         } catch (err) {
           console.error('Unexpected error checking user role:', err)
           redirect(`/auth?error=${encodeURIComponent('Failed to verify user permissions')}`)

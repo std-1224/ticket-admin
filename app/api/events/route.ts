@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
       .from('events')
       .select(`
         *,
-        users!events_created_by_fkey(name)
+        profiles!events_created_by_fkey(name)
       `)
 
     // Filter by user if userId is provided

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch orders with pending and delivered status within the date range
     const { data: orders, error } = await supabase
-      .from('orders')
+      .from('event_orders')
       .select('created_at, status, total_price')
       .in('status', ['pending', 'delivered'])
       .gte('created_at', startDate.toISOString())
