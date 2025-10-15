@@ -10,7 +10,6 @@ import {
   MapPin,
   PlusCircle,
   Save,
-  Trash2,
   Upload,
   X,
 } from "lucide-react"
@@ -62,8 +61,17 @@ export const EventsPage = () => {
 
   const [ticketTypes, setTicketTypes] = useState<any[]>([])
   const [isAddTicketOpen, setIsAddTicketOpen] = useState(false)
+  const [isEditTicketOpen, setIsEditTicketOpen] = useState(false)
+  const [editingTicket, setEditingTicket] = useState<any>(null)
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false)
   const [newTicket, setNewTicket] = useState({
+    name: "",
+    price: "",
+    total_quantity: "",
+    combo: "",
+    description: "",
+  })
+  const [editTicket, setEditTicket] = useState({
     name: "",
     price: "",
     total_quantity: "",
@@ -366,6 +374,106 @@ export const EventsPage = () => {
     }))
   }
 
+  const handleEditInputChange = (field: string, value: string) => {
+    setEditTicket((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
+  const handleEditTicket = (ticket: any) => {
+    setEditingTicket(ticket)
+    setEditTicket({
+      name: ticket.name,
+      price: ticket.price.toString(),
+      total_quantity: ticket.total_quantity.toString(),
+      combo: ticket.combo || "",
+      description: ticket.description || "",
+    })
+    setIsEditTicketOpen(true)
+  }
+
+  const handleUpdateTicket = async () => {
+    if (!editingTicket || !editTicket.name || !editTicket.price || !editTicket.total_quantity) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
+      return
+    }
+
+    try {
+      const ticketData = {
+        name: editTicket.name,
+        price: Number.parseFloat(editTicket.price),
+        total_quantity: Number.parseInt(editTicket.total_quantity),
+        combo: editTicket.combo || "N/A",
+        description: editTicket.description,
+      }
+
+      if (eventId) {
+        // Update in database using API
+        const response = await fetch(`/api/ticket-types/${editingTicket.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(ticketData),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to update ticket type')
+        }
+
+        const updatedTicket = await response.json()
+
+        // Update local state
+        setTicketTypes(prevTickets =>
+          prevTickets.map(ticket =>
+            ticket.id === editingTicket.id ? { ...ticket, ...ticketData } : ticket
+          )
+        )
+
+        toast({
+          title: "Success",
+          description: "Ticket type updated successfully",
+        })
+      } else {
+        // Update local state only (create mode)
+        setTicketTypes(prevTickets =>
+          prevTickets.map(ticket =>
+            ticket.id === editingTicket.id ? { ...ticket, ...ticketData } : ticket
+          )
+        )
+
+        toast({
+          title: "Success",
+          description: "Ticket type updated",
+        })
+      }
+
+      // Reset form and close dialog
+      setEditTicket({
+        name: "",
+        price: "",
+        total_quantity: "",
+        combo: "",
+        description: "",
+      })
+      setEditingTicket(null)
+      setIsEditTicketOpen(false)
+
+    } catch (error: any) {
+      console.error('Error updating ticket:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update ticket type",
+        variant: "destructive"
+      })
+    }
+  }
+
   const handleUpdateEvent = async () => {
     if (!user || !eventId) {
       toast({
@@ -532,34 +640,7 @@ export const EventsPage = () => {
     }
   }
 
-  const handleDeleteTicket = async (ticketId: string) => {
-    try {
-      const response = await fetch(`/api/ticket-types?id=${ticketId}`, {
-        method: 'DELETE',
-      })
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete ticket type')
-      }
-
-      // Remove from local state
-      setTicketTypes(ticketTypes?.filter((ticket: any) => ticket.id !== ticketId) || [])
-
-      toast({
-        title: "Success",
-        description: "Ticket type deleted successfully",
-      })
-    } catch (error: any) {
-      console.error('Error deleting ticket:', error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete ticket type",
-        variant: "destructive"
-      })
-    }
-  }
 
   const handleEventDataChange = (field: string, value: string) => {
     setEventData((prev) => ({
@@ -1076,6 +1157,106 @@ export const EventsPage = () => {
                   </div>
                 </DialogContent>
               </Dialog>
+
+              {/* Edit Ticket Dialog */}
+              <Dialog open={isEditTicketOpen} onOpenChange={setIsEditTicketOpen}>
+                <DialogContent className="sm:max-w-[90vw] lg:max-w-[425px] max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="text-lg">Edit Ticket Type</DialogTitle>
+                    <DialogDescription className="text-sm">
+                      Update the information for this ticket type.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-ticket-name" className="text-sm">
+                        Ticket Name
+                      </Label>
+                      <Input
+                        id="edit-ticket-name"
+                        placeholder="e.g. VIP Premium"
+                        value={editTicket.name}
+                        onChange={(e) => handleEditInputChange("name", e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-ticket-price" className="text-sm">
+                          Price ($)
+                        </Label>
+                        <Input
+                          id="edit-ticket-price"
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={editTicket.price}
+                          onChange={(e) => handleEditInputChange("price", e.target.value)}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-ticket-quantity" className="text-sm">
+                          Total quantity
+                        </Label>
+                        <Input
+                          id="edit-ticket-quantity"
+                          type="number"
+                          placeholder="100"
+                          value={editTicket.total_quantity}
+                          onChange={(e) => handleEditInputChange("total_quantity", e.target.value)}
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-ticket-combo" className="text-sm">
+                        Combo/Benefits (Optional)
+                      </Label>
+                      <Input
+                        id="edit-ticket-combo"
+                        placeholder="e.g. Includes drink + VIP access"
+                        value={editTicket.combo}
+                        onChange={(e) => handleEditInputChange("combo", e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-ticket-description" className="text-sm">
+                        Description
+                      </Label>
+                      <Textarea
+                        id="edit-ticket-description"
+                        rows={3}
+                        placeholder="Describe the benefits of this ticket..."
+                        value={editTicket.description}
+                        onChange={(e) => handleEditInputChange("description", e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditTicketOpen(false)
+                        setEditingTicket(null)
+                        setEditTicket({
+                          name: "",
+                          price: "",
+                          total_quantity: "",
+                          combo: "",
+                          description: "",
+                        })
+                      }}
+                      className="bg-transparent"
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={handleUpdateTicket}>Update Ticket</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -1100,19 +1281,14 @@ export const EventsPage = () => {
                         <TableCell className="text-xs sm:text-sm hidden sm:table-cell">{ticket.description}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-1 justify-end">
-                            <Button variant="ghost" size="sm" className="text-xs">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => handleEditTicket(ticket)}
+                            >
                               Edit
                             </Button>
-                            {eventId && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-xs text-red-600 hover:text-red-700"
-                                onClick={() => handleDeleteTicket(ticket.id)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            )}
                           </div>
                         </TableCell>
                       </TableRow>

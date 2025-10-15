@@ -50,6 +50,7 @@ export function VipGuestsPage() {
   const [selectedEvent, setSelectedEvent] = useState<string>('all')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [recentlyUpdatedGuests, setRecentlyUpdatedGuests] = useState<Set<string>>(new Set())
 
   // Form state
   const [newGuestName, setNewGuestName] = useState('')
@@ -125,9 +126,92 @@ export function VipGuestsPage() {
     }
   }
 
+  // Setup real-time subscription for VIP guest changes
+  const setupVipGuestSubscription = () => {
+    const subscription = supabase
+      .channel('admin_vip_guests_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vip_guests'
+        },
+        (payload) => {
+          console.log('Admin: VIP guest change detected:', payload)
+
+          // Show toast notification for status changes
+          if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
+            const oldStatus = (payload.old as any).status
+            const newStatus = (payload.new as any).status
+            const guestName = (payload.new as any).name
+            const guestId = (payload.new as any).id
+
+            if (oldStatus !== newStatus) {
+              // Add to recently updated guests for visual highlighting
+              setRecentlyUpdatedGuests(prev => new Set([...prev, guestId]))
+
+              // Remove from recently updated after 5 seconds
+              setTimeout(() => {
+                setRecentlyUpdatedGuests(prev => {
+                  const newSet = new Set(prev)
+                  newSet.delete(guestId)
+                  return newSet
+                })
+              }, 5000)
+
+              if (newStatus === 'confirmed') {
+                toast.success(`🎉 ${guestName} confirmed their VIP invitation!`)
+              } else if (newStatus === 'cancelled') {
+                toast.error(`❌ ${guestName} cancelled their VIP invitation`)
+              }
+            }
+          } else if (payload.eventType === 'INSERT') {
+            const guestName = (payload.new as any).name
+            const guestId = (payload.new as any).id
+
+            // Add to recently updated guests for visual highlighting
+            setRecentlyUpdatedGuests(prev => new Set([...prev, guestId]))
+
+            // Remove from recently updated after 3 seconds
+            setTimeout(() => {
+              setRecentlyUpdatedGuests(prev => {
+                const newSet = new Set(prev)
+                newSet.delete(guestId)
+                return newSet
+              })
+            }, 3000)
+
+            toast.info(`➕ New VIP guest added: ${guestName}`)
+          } else if (payload.eventType === 'DELETE') {
+            const guestName = (payload.old as any).name
+            toast.info(`🗑️ VIP guest removed: ${guestName}`)
+          }
+
+          // Reload VIP guests to get updated data
+          fetchVipGuests()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }
+
   useEffect(() => {
     fetchEvents()
     fetchVipGuests()
+
+    // Setup real-time subscription
+    const unsubscribe = setupVipGuestSubscription()
+
+    // Cleanup subscription on unmount
+    return () => {
+      if (unsubscribe) {
+        unsubscribe()
+      }
+    }
   }, [])
 
   // Add new VIP guest
@@ -196,7 +280,7 @@ export function VipGuestsPage() {
       setNewGuestNotes('')
       setIsAddModalOpen(false)
 
-      toast.success('VIP guest added successfully')
+      toast.success('VIP guest added and invitation sent!')
     } catch (error) {
       console.error('Unexpected error:', error)
       toast.error('Failed to add VIP guest')
@@ -230,17 +314,6 @@ export function VipGuestsPage() {
     } catch (error) {
       console.error('Unexpected error:', error)
       toast.error('Failed to update status')
-    }
-  }
-
-  // Send QR code (simulated)
-  const handleSendQR = async (guest: VipGuest) => {
-    try {
-      // In a real implementation, this would send an email with the QR code
-      toast.success(`QR code sent to ${guest.email} (Simulated)`)
-    } catch (error) {
-      console.error('Error sending QR:', error)
-      toast.error('Failed to send QR code')
     }
   }
 
@@ -460,12 +533,20 @@ export function VipGuestsPage() {
                   <TableHead>Event</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>QR Code</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredGuests.map((guest) => (
-                  <TableRow key={guest.id}>
+                {filteredGuests.map((guest) => {
+                  const isRecentlyUpdated = recentlyUpdatedGuests.has(guest.id)
+                  return (
+                  <TableRow
+                    key={guest.id}
+                    className={`transition-all duration-500 ${
+                      isRecentlyUpdated
+                        ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 shadow-md'
+                        : ''
+                    }`}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar>
@@ -491,9 +572,19 @@ export function VipGuestsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStatusBadgeVariant(guest.status)} className="flex items-center gap-1 w-fit">
+                      <Badge
+                        variant={getStatusBadgeVariant(guest.status)}
+                        className={`flex items-center gap-1 w-fit transition-all duration-500 ${
+                          isRecentlyUpdated
+                            ? 'animate-pulse ring-2 ring-blue-400 ring-opacity-50'
+                            : ''
+                        }`}
+                      >
                         {getStatusIcon(guest.status)}
                         {guest.status}
+                        {isRecentlyUpdated && (
+                          <span className="ml-1 text-xs">✨</span>
+                        )}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -501,34 +592,9 @@ export function VipGuestsPage() {
                         {guest.qr_code.slice(0, 12)}...
                       </code>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleSendQR(guest)}>
-                            <Mail className="h-4 w-4 mr-2" />
-                            Send QR (Simulated)
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details (Coming Soon)
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleUpdateStatus(guest.id, guest.status === 'cancelled' ? 'invited' : 'cancelled')}
-                            className="text-red-600"
-                          >
-                            <XCircle className="h-4 w-4 mr-2" />
-                            {guest.status === 'cancelled' ? 'Reactivate' : 'Cancel VIP'}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
                   </TableRow>
-                ))}
+                  )
+                })}
               </TableBody>
             </Table>
           )}
