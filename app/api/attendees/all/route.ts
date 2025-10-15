@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
     if (userIds.length > 0) {
       const { data: users, error: usersError } = await supabaseAdmin
         .from('profiles')
-        .select('id, name, email, avatar_url')
+        .select('id, name, email')
         .in('id', userIds)
 
       if (usersError) {
