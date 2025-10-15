@@ -57,7 +57,7 @@ export default function RoleAccessPage() {
 
   const handleGoToClient = () => {
     // Redirect to client app (adjust URL as needed)
-    window.open('http://localhost:3000', '_blank')
+    window.open('https://ticket-client-two.vercel.app/', '_blank')
   }
 
   const getRoleColor = (role: string) => {
