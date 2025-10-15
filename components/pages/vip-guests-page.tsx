@@ -30,7 +30,16 @@ interface VipGuest {
 
 interface Event {
   id: string
-  name: string
+  title: string
+  date: string
+  time: string
+  location: string
+  image_url: string
+  created_by: string
+  created_at: string
+  description: string
+  purchase_count: number
+  ticket_count: number
 }
 
 export function VipGuestsPage() {
@@ -51,17 +60,22 @@ export function VipGuestsPage() {
   // Fetch events
   const fetchEvents = async () => {
     try {
-      const { data, error } = await supabase
-        .from('events')
-        .select('id, name')
-        .order('created_at', { ascending: false })
+      const response = await fetch('/api/events/list?limit=100')
+      const result = await response.json()
 
-      if (error) {
-        console.error('Error fetching events:', error)
-        return
+     if (!response.ok) {
+        // Check if it's an auth error
+        if (response.status === 401 || result.code === 'AUTH_ERROR') {
+          return
+        }
+        throw new Error(result.error || 'Failed to fetch events data')
       }
 
-      setEvents(data || [])
+      if (result.success) {
+        setEvents(result.data.events || [])
+      } else {
+        throw new Error(result.error || 'Failed to fetch events data')
+      }
     } catch (error) {
       console.error('Unexpected error fetching events:', error)
     }
@@ -326,7 +340,7 @@ export function VipGuestsPage() {
                   <SelectContent>
                     {events.map((event) => (
                       <SelectItem key={event.id} value={event.id}>
-                        {event.name}
+                        {event.title}
                       </SelectItem>
                     ))}
                   </SelectContent>
