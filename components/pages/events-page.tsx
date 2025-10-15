@@ -153,7 +153,7 @@ export const EventsPage = () => {
       }
       setEventData(eventDataForState)
       setOriginalEventData(eventDataForState) // Store original data for cancel functionality
-      setUploadedImageUrl(event.image_url)
+      setUploadedImageUrl(event.image_url || null)
 
       // Fetch ticket types for this event
       const ticketsResponse = await fetch(`/api/ticket-types?eventId=${eventId}`)
@@ -390,13 +390,16 @@ export const EventsPage = () => {
     setSaveStatus("saving")
 
     try {
+      // Determine the correct image URL to use
+      const imageUrlToUse = uploadedImageUrl || eventData.image || currentEvent?.image_url
+
       const eventPayload = {
         title: eventData.title,
         description: eventData.description,
         date: eventData.date,
         time: eventData.time,
         location: eventData.location,
-        image_url: uploadedImageUrl || eventData.image,
+        image_url: imageUrlToUse,
       }
 
       console.log('Updating event with payload:', eventPayload)
@@ -417,14 +420,17 @@ export const EventsPage = () => {
 
       setSaveStatus("saved")
       setIsEditMode(false)
-      setOriginalEventData(eventData) // Update original data after successful save
+
+      // Update original data with the current state including the new image URL
+      const updatedEventData = { ...eventData, image: imageUrlToUse }
+      setOriginalEventData(updatedEventData)
 
       toast({
         title: "Success",
         description: "Event updated successfully!",
       })
 
-      // Refresh event data
+      // Refresh event data to ensure we have the latest from the database
       await fetchEventDetails()
 
     } catch (error: any) {
@@ -567,14 +573,17 @@ export const EventsPage = () => {
     setIsEditMode(!isEditMode)
     if (!isEditMode) {
       // Entering edit mode - store current data as original
-      setOriginalEventData(eventData)
+      const currentDataWithImage = { ...eventData, image: uploadedImageUrl || eventData.image }
+      setOriginalEventData(currentDataWithImage)
+      console.log('Entering edit mode - stored original data:', currentDataWithImage)
     }
   }
 
   const handleCancelEdit = () => {
     if (originalEventData) {
       setEventData(originalEventData)
-      setUploadedImageUrl(originalEventData.image)
+      setUploadedImageUrl(originalEventData.image || null)
+      console.log('Cancelled edit - restored image URL to:', originalEventData.image)
     }
     setIsEditMode(false)
     setSaveStatus("idle")
