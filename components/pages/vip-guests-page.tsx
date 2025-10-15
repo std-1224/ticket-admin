@@ -96,7 +96,7 @@ export function VipGuestsPage() {
           qr_code,
           notes,
           created_at,
-          events!inner(name)
+          events!inner(title)
         `)
         .order('created_at', { ascending: false })
 
@@ -113,7 +113,7 @@ export function VipGuestsPage() {
 
       const formattedGuests = data?.map(guest => ({
         ...guest,
-        event_name: guest.events?.name || 'Unknown Event'
+        event_name: (guest.events as any)?.title || 'Unknown Event'
       })) || []
 
       setVipGuests(formattedGuests)
@@ -170,7 +170,7 @@ export function VipGuestsPage() {
           qr_code,
           notes,
           created_at,
-          events!inner(name)
+          events!inner(title)
         `)
         .single()
 
@@ -184,7 +184,7 @@ export function VipGuestsPage() {
       if (newGuest) {
         const formattedGuest = {
           ...newGuest,
-          event_name: newGuest.events?.name || 'Unknown Event'
+          event_name: (newGuest.events as any)?.title || 'Unknown Event'
         }
         setVipGuests(prevGuests => [formattedGuest, ...prevGuests])
       }
@@ -427,7 +427,7 @@ export function VipGuestsPage() {
             <SelectItem value="all">All events</SelectItem>
             {events.map((event) => (
               <SelectItem key={event.id} value={event.id}>
-                {event.name}
+                {event.title}
               </SelectItem>
             ))}
           </SelectContent>
