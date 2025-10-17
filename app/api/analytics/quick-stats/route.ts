@@ -3,12 +3,9 @@ import { supabase } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("📊 Quick stats API called")
     
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('event_id')
-    
-    console.log("📊 Query params:", { eventId })
 
     // Base query for event_order_items with delivered status
     let orderItemsQuery = supabase
@@ -35,8 +32,6 @@ export async function GET(request: NextRequest) {
 
     const { data: orderItems, error: orderItemsError } = await orderItemsQuery
 
-    console.log("📊 Order items fetched:", { count: orderItems?.length, error: orderItemsError })
-
     if (orderItemsError) {
       console.error('❌ Error fetching order items:', orderItemsError)
       return NextResponse.json(
@@ -46,7 +41,6 @@ export async function GET(request: NextRequest) {
     }
 
     if (!orderItems || orderItems.length === 0) {
-      console.log("📊 No delivered order items found")
       return NextResponse.json({
         success: true,
         data: {
@@ -93,13 +87,6 @@ export async function GET(request: NextRequest) {
         mostPopularTicket = data.name
       }
     }
-
-    console.log("📊 Calculated stats:", {
-      ticketsSold,
-      revenueGenerated,
-      mostPopularTicket,
-      ticketTypeCount: Array.from(ticketTypeCount.entries())
-    })
 
     return NextResponse.json({
       success: true,

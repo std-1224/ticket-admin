@@ -3,12 +3,9 @@ import { supabase } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("📊 Daily sales API called")
     
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '30') // Default to 30 days
-    
-    console.log("📊 Query params:", { days })
 
     // Use the imported supabase client
 
@@ -16,11 +13,6 @@ export async function GET(request: NextRequest) {
     const endDate = new Date()
     const startDate = new Date()
     startDate.setDate(endDate.getDate() - days)
-
-    console.log("📊 Date range:", { 
-      startDate: startDate.toISOString().split('T')[0], 
-      endDate: endDate.toISOString().split('T')[0] 
-    })
 
     // Fetch orders with pending and delivered status within the date range
     const { data: orders, error } = await supabase
@@ -30,8 +22,6 @@ export async function GET(request: NextRequest) {
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString())
       .order('created_at', { ascending: true })
-
-    console.log("📊 Orders fetched:", { count: orders?.length, error })
 
     if (error) {
       console.error('❌ Error fetching orders:', error)
@@ -72,12 +62,6 @@ export async function GET(request: NextRequest) {
         sales: data.count,
         revenue: data.revenue
       }
-    })
-
-    console.log("✅ Daily sales data prepared:", { 
-      totalDays: salesData.length,
-      totalSales: salesData.reduce((sum, day) => sum + day.sales, 0),
-      totalRevenue: salesData.reduce((sum, day) => sum + day.revenue, 0)
     })
 
     return NextResponse.json({
