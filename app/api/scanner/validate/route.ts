@@ -63,20 +63,43 @@ export async function POST(request: NextRequest) {
     let vipGuestError = null
 
     if (isOrder) {
-      // Find the order by QR code
+      // Find the order by QR code with event information
       const orderResult = await supabase
         .from("event_orders")
-        .select('*')
+        .select(`
+          *,
+          events(
+            id,
+            title,
+            date,
+            time,
+            location
+          ),
+          profiles!user_id(
+            id,
+            name,
+            email
+          )
+        `)
         .eq('qr_code', qr_code)
         .single()
       
       order = orderResult.data
       orderError = orderResult.error
     } else if (isVipGuest) {
-      // Find the VIP guest by QR code
+      // Find the VIP guest by QR code with event information
       const vipResult = await supabase
         .from("vip_guests")
-        .select('*')
+        .select(`
+          *,
+          events(
+            id,
+            title,
+            date,
+            time,
+            location
+          )
+        `)
         .eq('qr_code', qr_code)
         .single()
       
@@ -140,8 +163,8 @@ export async function POST(request: NextRequest) {
             event_title: order.events?.title,
             status: order.status,
             user_id: order.user_id,
-            user_name: order.users?.name,
-            user_email: order.users?.email,
+            user_name: order.profiles?.name,
+            user_email: order.profiles?.email,
             created_at: order.created_at,
             total_amount: order.total_amount
           },
@@ -159,7 +182,8 @@ export async function POST(request: NextRequest) {
             email: vipGuest.email,
             status: vipGuest.status,
             created_at: vipGuest.created_at,
-            notes: vipGuest.notes
+            notes: vipGuest.notes,
+            event_title: vipGuest.events?.title
           }
         })
       }
@@ -168,7 +192,7 @@ export async function POST(request: NextRequest) {
     // Validate order or VIP guest status
     if (isOrder) {
       // Check if order is paid (not allow 'paid' status only)
-      if (order.status === 'paid') {
+      if (order.status === 'delivered' || order.status === 'paid' || order.status === 'approved') {
         // Record invalid scan - order not paid
         await supabase.from('event_scans').insert({
           order_id: order.id,
@@ -186,11 +210,28 @@ export async function POST(request: NextRequest) {
             event_title: order.events?.title,
             status: order.status,
             user_id: order.user_id,
-            user_name: order.users?.name,
-            user_email: order.users?.email,
+            user_name: order.profiles?.name,
+            user_email: order.profiles?.email,
             created_at: order.created_at,
             total_amount: order.total_amount
           },
+          vip_guest: null
+        })
+      }
+
+      if (order.status === 'cancelled' || order.status === 'refunded' || order.status === 'pending' || order.status === 'expired' || order.status === 'waiting_payment' || order.status === 'failed') {
+        // Record invalid scan - order not paid
+        await supabase.from('event_scans').insert({
+          order_id: order.id,
+          vip_guest_id: null,
+          scanned_by: scanner_id,
+          status: 'invalid'
+        })
+        return NextResponse.json({
+          success: false,
+          status: 'invalid',
+          message: 'Order is not paid',
+          order: null,
           vip_guest: null
         })
       }
@@ -216,7 +257,8 @@ export async function POST(request: NextRequest) {
             email: vipGuest.email,
             status: vipGuest.status,
             created_at: vipGuest.created_at,
-            notes: vipGuest.notes
+            notes: vipGuest.notes,
+            event_title: vipGuest.events?.title
           }
         })
       }
@@ -311,7 +353,8 @@ export async function POST(request: NextRequest) {
           email: vipGuest.email,
           status: vipGuest.status === 'invited' ? 'confirmed' : vipGuest.status,
           created_at: vipGuest.created_at,
-          notes: vipGuest.notes
+          notes: vipGuest.notes,
+          event_title: vipGuest.events?.title
         }
       })
     }
