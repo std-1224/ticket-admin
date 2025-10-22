@@ -230,7 +230,7 @@ export function VipGuestsPage() {
       setIsSubmitting(true)
 
       // Generate QR code (simple UUID for now)
-      const qrCode = `VIP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      const qrCode = `VIP-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 
       const { data: newGuest, error } = await supabase
         .from('vip_guests')
