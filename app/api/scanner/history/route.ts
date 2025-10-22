@@ -37,8 +37,9 @@ export async function GET(request: NextRequest) {
     let transformedScans: any[] = []
 
     if (scans && scans.length > 0) {
-      // Get unique order IDs and scanner IDs
+      // Get unique order IDs, VIP guest IDs, and scanner IDs
       const orderIds = [...new Set(scans.map(scan => scan.order_id).filter(Boolean))]
+      const vipGuestIds = [...new Set(scans.map(scan => scan.vip_guest_id).filter(Boolean))]
       const scannerIds = [...new Set(scans.map(scan => scan.scanned_by).filter(Boolean))]
 
 
@@ -117,6 +118,17 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Fetch VIP guests data
+      let vipGuestsData: any[] = []
+      if (vipGuestIds.length > 0) {
+        const { data: vipGuests } = await supabase
+          .from('vip_guests')
+          .select('id, name, email, status, created_at, notes, event_id')
+          .in('id', vipGuestIds)
+
+        vipGuestsData = vipGuests || []
+      }
+
       // Fetch scanner users data
       let scannersData: any[] = []
       if (scannerIds.length > 0) {
@@ -130,6 +142,7 @@ export async function GET(request: NextRequest) {
 
       // Create maps for quick lookup
       const ordersMap = new Map(ordersData.map(order => [order.id, order]))
+      const vipGuestsMap = new Map(vipGuestsData.map(vip => [vip.id, vip]))
       const eventsMap = new Map(eventsData.map(event => [event.id, event]))
       const usersMap = new Map(usersData.map(user => [user.id, user]))
       const scannersMap = new Map(scannersData.map(scanner => [scanner.id, scanner]))
@@ -148,14 +161,16 @@ export async function GET(request: NextRequest) {
       if (eventId) {
         filteredScans = scans.filter(scan => {
           const order = ordersMap.get(scan.order_id)
-          return order && order.event_id === eventId
+          const vipGuest = vipGuestsMap.get(scan.vip_guest_id)
+          return (order && order.event_id === eventId) || (vipGuest && vipGuest.event_id === eventId)
         })
       }
 
       // Transform the data for frontend consumption
       transformedScans = filteredScans.map(scan => {
         const order = ordersMap.get(scan.order_id)
-        const event = order ? eventsMap.get(order.event_id) : null
+        const vipGuest = vipGuestsMap.get(scan.vip_guest_id)
+        const event = order ? eventsMap.get(order.event_id) : (vipGuest ? eventsMap.get(vipGuest.event_id) : null)
         const user = order ? usersMap.get(order.user_id) : null
         const scanner = scannersMap.get(scan.scanned_by)
         const orderItems = order ? orderItemsMap.get(order.id) || [] : []
@@ -179,6 +194,18 @@ export async function GET(request: NextRequest) {
             user_name: user?.name,
             user_email: user?.email,
             order_items: orderItems
+          } : null,
+          vip_guest: vipGuest ? {
+            id: vipGuest.id,
+            name: vipGuest.name,
+            email: vipGuest.email,
+            status: vipGuest.status,
+            created_at: vipGuest.created_at,
+            notes: vipGuest.notes,
+            event_title: event?.title,
+            event_date: event?.date,
+            event_time: event?.time,
+            event_location: event?.location
           } : null
         }
       })

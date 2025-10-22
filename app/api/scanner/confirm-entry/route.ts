@@ -9,11 +9,11 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { order_id, scanner_id } = body
+    const { order_id, vip_guest_id, scanner_id } = body
 
-    if (!order_id || !scanner_id) {
+    if ((!order_id && !vip_guest_id) || !scanner_id) {
       return NextResponse.json(
-        { error: 'Order ID and scanner ID are required' },
+        { error: 'Order ID or VIP guest ID and scanner ID are required' },
         { status: 400 }
       )
     }
@@ -33,56 +33,126 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get the order
-    const { data: order, error: orderError } = await supabase
-      .from("event_orders")
-      .select('id, status')
-      .eq('id', order_id)
-      .single()
+    // Determine if we're confirming an order or VIP guest
+    const isOrder = !!order_id
+    const isVipGuest = !!vip_guest_id
 
-    if (orderError || !order) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      )
+    if (isOrder) {
+      // Get the order
+      const { data: order, error: orderError } = await supabase
+        .from("event_orders")
+        .select('id, status')
+        .eq('id', order_id)
+        .single()
+
+      if (orderError || !order) {
+        return NextResponse.json(
+          { error: 'Order not found' },
+          { status: 404 }
+        )
+      }
+
+      // Find the most recent 'valid' scan for this order
+      const { data: validScan, error: scanError } = await supabase
+        .from('event_scans')
+        .select('id')
+        .eq('order_id', order_id)
+        .eq('status', 'valid')
+        .order('scanned_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (scanError || !validScan) {
+        return NextResponse.json(
+          { error: 'No valid scan found to confirm' },
+          { status: 404 }
+        )
+      }
+
+      // Update the scan status from 'valid' to 'used'
+      const { error: updateError } = await supabase
+        .from('event_scans')
+        .update({ status: 'used' })
+        .eq('id', validScan.id)
+
+      if (updateError) {
+        return NextResponse.json(
+          { error: 'Failed to update scan status', details: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Order entry confirmed successfully',
+        scan_id: validScan.id,
+        status: 'used',
+        type: 'order'
+      })
+    } else if (isVipGuest) {
+      // Get the VIP guest
+      const { data: vipGuest, error: vipGuestError } = await supabase
+        .from("vip_guests")
+        .select('id, status')
+        .eq('id', vip_guest_id)
+        .single()
+
+      if (vipGuestError || !vipGuest) {
+        return NextResponse.json(
+          { error: 'VIP guest not found' },
+          { status: 404 }
+        )
+      }
+
+      // Find the most recent 'valid' scan for this VIP guest
+      const { data: validScan, error: scanError } = await supabase
+        .from('event_scans')
+        .select('id')
+        .eq('vip_guest_id', vip_guest_id)
+        .eq('status', 'valid')
+        .order('scanned_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (scanError || !validScan) {
+        return NextResponse.json(
+          { error: 'No valid scan found to confirm' },
+          { status: 404 }
+        )
+      }
+
+      // Update the scan status from 'valid' to 'used'
+      const { error: updateError } = await supabase
+        .from('event_scans')
+        .update({ status: 'used' })
+        .eq('id', validScan.id)
+
+      if (updateError) {
+        return NextResponse.json(
+          { error: 'Failed to update scan status', details: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      // Update VIP guest status to 'delivered' after confirming entry
+      const { error: vipUpdateError } = await supabase
+        .from('vip_guests')
+        .update({ status: 'delivered' })
+        .eq('id', vip_guest_id)
+
+      if (vipUpdateError) {
+        console.error('Failed to update VIP guest status:', vipUpdateError)
+        // Don't fail the request, just log the error
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'VIP guest entry confirmed successfully',
+        scan_id: validScan.id,
+        status: 'used',
+        type: 'vip_guest'
+      })
     }
-
-    // Find the most recent 'valid' scan for this order
-    const { data: validScan, error: scanError } = await supabase
-      .from('event_scans')
-      .select('id')
-      .eq('order_id', order_id)
-      .eq('status', 'valid')
-      .order('scanned_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    if (scanError || !validScan) {
-      return NextResponse.json(
-        { error: 'No valid scan found to confirm' },
-        { status: 404 }
-      )
-    }
-
-    // Update the scan status from 'valid' to 'used'
-    const { error: updateError } = await supabase
-      .from('event_scans')
-      .update({ status: 'used' })
-      .eq('id', validScan.id)
-
-    if (updateError) {
-      return NextResponse.json(
-        { error: 'Failed to update scan status', details: updateError.message },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Entry confirmed successfully',
-      scan_id: validScan.id,
-      status: 'used'
-    })
 
   } catch (error: any) {
     return NextResponse.json(

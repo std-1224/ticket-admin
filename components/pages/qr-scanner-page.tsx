@@ -657,28 +657,38 @@ export const QRScannerPage = () => {
                   </div>
                 </div>
 
-                {/* Detailed Order Information */}
-                {scanResult.order && (
+                {/* Detailed Order or VIP Guest Information */}
+                {(scanResult.order || scanResult.vip_guest) && (
                   <div className="space-y-4 text-left">
                     {/* Event Information */}
                     <div className="bg-muted/50 p-4 rounded-lg">
                       <h4 className="font-semibold text-sm text-muted-foreground mb-3 flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        Order Information
+                        {scanResult.order ? 'Order Information' : 'VIP Guest Information'}
                       </h4>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Event:</span>
-                          <span className="font-medium text-right">{scanResult.order.event_title}</span>
+                          <span className="font-medium text-right">
+                            {scanResult.order?.event_title || scanResult.vip_guest?.event_title || 'Unknown Event'}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Status:</span>
-                          <span className="font-medium capitalize">{scanResult.order.status}</span>
+                          <span className="font-medium capitalize">
+                            {scanResult.order?.status || scanResult.vip_guest?.status}
+                          </span>
                         </div>
-                        {scanResult.order.total_amount && (
+                        {scanResult.order?.total_amount && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Total Amount:</span>
                             <span className="font-medium">${scanResult.order.total_amount}</span>
+                          </div>
+                        )}
+                        {scanResult.vip_guest?.notes && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Notes:</span>
+                            <span className="font-medium text-right">{scanResult.vip_guest.notes}</span>
                           </div>
                         )}
                       </div>
@@ -688,54 +698,72 @@ export const QRScannerPage = () => {
                     <div className="bg-muted/50 p-4 rounded-lg">
                       <h4 className="font-semibold text-sm text-muted-foreground mb-3 flex items-center gap-2">
                         <User className="h-4 w-4" />
-                        User Information
+                        {scanResult.order ? 'User Information' : 'Guest Information'}
                       </h4>
                       <div className="space-y-2 text-sm">
-                        {scanResult.order.user_name && (
+                        {(scanResult.order?.user_name || scanResult.vip_guest?.name) && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Name:</span>
-                            <span className="font-medium">{scanResult.order.user_name}</span>
+                            <span className="font-medium">
+                              {scanResult.order?.user_name || scanResult.vip_guest?.name}
+                            </span>
                           </div>
                         )}
-                        {scanResult.order.user_email && (
+                        {(scanResult.order?.user_email || scanResult.vip_guest?.email) && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Email:</span>
-                            <span className="font-medium">{scanResult.order.user_email}</span>
+                            <span className="font-medium">
+                              {scanResult.order?.user_email || scanResult.vip_guest?.email}
+                            </span>
                           </div>
                         )}
-                        {scanResult.order.user_id && (
+                        {scanResult.order?.user_id && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">User ID:</span>
                             <span className="font-mono text-xs">{scanResult.order.user_id.slice(0, 8)}...</span>
                           </div>
                         )}
+                        {scanResult.vip_guest?.id && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Guest ID:</span>
+                            <span className="font-mono text-xs">{scanResult.vip_guest.id.slice(0, 8)}...</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Purchase Information */}
+                    {/* Purchase/Invitation Information */}
                     <div className="bg-muted/50 p-4 rounded-lg">
                       <h4 className="font-semibold text-sm text-muted-foreground mb-3 flex items-center gap-2">
                         <CreditCard className="h-4 w-4" />
-                        Purchase Details
+                        {scanResult.order ? 'Purchase Details' : 'Invitation Details'}
                       </h4>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Order ID:</span>
-                          <span className="font-mono text-xs">{scanResult.order.id.slice(0, 8)}...</span>
+                          <span className="text-muted-foreground">
+                            {scanResult.order ? 'Order ID:' : 'Guest ID:'}
+                          </span>
+                          <span className="font-mono text-xs">
+                            {(scanResult.order?.id || scanResult.vip_guest?.id)?.slice(0, 8)}...
+                          </span>
                         </div>
-                        {scanResult.order.created_at && (
+                        {(scanResult.order?.created_at || scanResult.vip_guest?.created_at) && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Purchased:</span>
+                            <span className="text-muted-foreground">
+                              {scanResult.order ? 'Purchased:' : 'Invited:'}
+                            </span>
                             <span className="font-medium">
-                              {new Date(scanResult.order.created_at).toLocaleDateString()}
+                              {new Date((scanResult.order?.created_at || scanResult.vip_guest?.created_at)!).toLocaleDateString()}
                             </span>
                           </div>
                         )}
-                        {scanResult.order.created_at && (
+                        {(scanResult.order?.created_at || scanResult.vip_guest?.created_at) && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Purchase Time:</span>
+                            <span className="text-muted-foreground">
+                              {scanResult.order ? 'Purchase Time:' : 'Invitation Time:'}
+                            </span>
                             <span className="font-medium">
-                              {new Date(scanResult.order.created_at).toLocaleTimeString()}
+                              {new Date((scanResult.order?.created_at || scanResult.vip_guest?.created_at)!).toLocaleTimeString()}
                             </span>
                           </div>
                         )}
@@ -743,7 +771,7 @@ export const QRScannerPage = () => {
                     </div>
 
                     {/* Scan Information */}
-                    {(scanResult.order.scanned_at) && (
+                    {(scanResult.order?.scanned_at) && (
                       <div className="bg-muted/50 p-4 rounded-lg">
                         <h4 className="font-semibold text-sm text-muted-foreground mb-3 flex items-center gap-2">
                           <Hash className="h-4 w-4" />
@@ -756,7 +784,7 @@ export const QRScannerPage = () => {
                               <span className="font-medium">{(scanResult.order as any).scan_count}</span>
                             </div>
                           )}
-                          {scanResult.order.scanned_at && (
+                          {scanResult.order?.scanned_at && (
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Last Scan:</span>
                               <span className="font-medium">
@@ -773,7 +801,9 @@ export const QRScannerPage = () => {
                 {/* Action Status */}
                 {scanResult.success && (
                   <div className="mt-4 p-4 bg-green-400/10 rounded-lg border border-green-400/20 text-center">
-                    <p className="text-green-400 text-sm font-medium">✅ Allow entry to event</p>
+                    <p className="text-green-400 text-sm font-medium">
+                      ✅ {scanResult.order ? 'Allow entry to event' : 'VIP guest access granted'}
+                    </p>
                     <Button
                       className="mt-3 bg-green-600 hover:bg-green-700 text-white"
                       onClick={async () => {
@@ -785,7 +815,8 @@ export const QRScannerPage = () => {
                               'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({
-                              order_item_id: scanResult.order?.id,
+                              order_id: scanResult.order?.id,
+                              vip_guest_id: scanResult.vip_guest?.id,
                               scanner_id: scannerId
                             })
                           })
@@ -860,7 +891,8 @@ export const QRScannerPage = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[120px] text-xs sm:text-sm">Event</TableHead>
-                    <TableHead className="min-w-[100px] text-xs sm:text-sm">Order</TableHead>
+                    <TableHead className="min-w-[100px] text-xs sm:text-sm">Order/Guest</TableHead>
+                    <TableHead className="min-w-[80px] text-xs sm:text-sm">Type</TableHead>
                     <TableHead className="min-w-[80px] text-xs sm:text-sm">Status</TableHead>
                     <TableHead className="min-w-[80px] text-xs sm:text-sm">Time</TableHead>
                     <TableHead className="text-right min-w-[100px] text-xs sm:text-sm">Scanner</TableHead>
@@ -870,10 +902,18 @@ export const QRScannerPage = () => {
                   {scanHistory && scanHistory.map((scan) => (
                     <TableRow key={scan.id}>
                       <TableCell className="font-medium text-xs sm:text-sm">
-                        {scan.order?.event_title || 'Unknown Event'}
+                        {scan.order?.event_title || scan.vip_guest?.event_title || 'Unknown Event'}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs sm:text-sm">
-                        {scan.order?.order_number || scan.order?.id?.slice(0, 8) || 'Unknown Order'}
+                        {scan.order ? 
+                          (scan.order.order_number || scan.order.id?.slice(0, 8) || 'Unknown Order') :
+                          (scan.vip_guest?.name || scan.vip_guest?.id?.slice(0, 8) || 'Unknown Guest')
+                        }
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {scan.order ? 'ORDER' : 'VIP'}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant={getStatusBadgeVariant(scan.status)} className="text-xs">

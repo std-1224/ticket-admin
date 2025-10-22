@@ -15,6 +15,15 @@ export interface ScanResult {
     user_name?: string
     user_email?: string
   } | null
+  vip_guest: {
+    id: string
+    name: string
+    email: string
+    status: string
+    created_at: string
+    notes?: string
+    event_title?: string
+  } | null
 }
 
 export interface ScanHistoryItem {
@@ -36,6 +45,18 @@ export interface ScanHistoryItem {
     event_location?: string
     user_name?: string
     user_email?: string
+  } | null
+  vip_guest: {
+    id: string
+    name: string
+    email: string
+    status: string
+    created_at: string
+    notes?: string
+    event_title?: string
+    event_date?: string
+    event_time?: string
+    event_location?: string
   } | null
 }
 
