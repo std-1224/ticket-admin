@@ -29,6 +29,7 @@ export interface ScanResult {
 export interface ScanHistoryItem {
   id: string
   scanned_at: string
+  created_at: string
   status: 'valid' | 'invalid' | 'used'
   scanner_name: string
   scanner_email?: string

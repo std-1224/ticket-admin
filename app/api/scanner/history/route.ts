@@ -118,12 +118,27 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Fetch VIP guests data
+      // Fetch VIP guests data with event information
       let vipGuestsData: any[] = []
       if (vipGuestIds.length > 0) {
         const { data: vipGuests } = await supabase
           .from('vip_guests')
-          .select('id, name, email, status, created_at, notes, event_id')
+          .select(`
+            id, 
+            name, 
+            email, 
+            status, 
+            created_at, 
+            notes, 
+            event_id,
+            events(
+              id,
+              title,
+              date,
+              time,
+              location
+            )
+          `)
           .in('id', vipGuestIds)
 
         vipGuestsData = vipGuests || []
@@ -170,7 +185,8 @@ export async function GET(request: NextRequest) {
       transformedScans = filteredScans.map(scan => {
         const order = ordersMap.get(scan.order_id)
         const vipGuest = vipGuestsMap.get(scan.vip_guest_id)
-        const event = order ? eventsMap.get(order.event_id) : (vipGuest ? eventsMap.get(vipGuest.event_id) : null)
+        const event = order ? eventsMap.get(order.event_id) : null
+        const vipEvent = vipGuest ? vipGuest.events : null
         const user = order ? usersMap.get(order.user_id) : null
         const scanner = scannersMap.get(scan.scanned_by)
         const orderItems = order ? orderItemsMap.get(order.id) || [] : []
@@ -178,6 +194,7 @@ export async function GET(request: NextRequest) {
         return {
           id: scan.id,
           scanned_at: scan.scanned_at,
+          created_at: scan.created_at,
           status: scan.status,
           scanner_name: scanner?.name || 'Unknown',
           scanner_email: scanner?.email,
@@ -202,10 +219,10 @@ export async function GET(request: NextRequest) {
             status: vipGuest.status,
             created_at: vipGuest.created_at,
             notes: vipGuest.notes,
-            event_title: event?.title,
-            event_date: event?.date,
-            event_time: event?.time,
-            event_location: event?.location
+            event_title: vipEvent?.title,
+            event_date: vipEvent?.date,
+            event_time: vipEvent?.time,
+            event_location: vipEvent?.location
           } : null
         }
       })

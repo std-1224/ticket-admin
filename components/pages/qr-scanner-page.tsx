@@ -921,7 +921,7 @@ export const QRScannerPage = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs sm:text-sm">
-                        {new Date(scan.scanned_at).toLocaleTimeString()}
+                        {new Date(scan.created_at).toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right text-xs sm:text-sm">
                         {scan.scanner_name}
