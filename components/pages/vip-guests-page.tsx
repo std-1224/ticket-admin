@@ -22,7 +22,7 @@ interface VipGuest {
   email: string
   event_id: string
   event_name: string
-  status: 'invited' | 'confirmed' | 'cancelled'
+  status: 'invited' | 'confirmed' | 'cancelled' | 'approved'
   qr_code: string
   notes?: string
   created_at: string
@@ -329,6 +329,7 @@ export function VipGuestsPage() {
   const totalVips = vipGuests.length
   const confirmedVips = vipGuests.filter(g => g.status === 'confirmed').length
   const invitedVips = vipGuests.filter(g => g.status === 'invited').length
+  const approvedVips = vipGuests.filter(g => g.status === 'approved').length
   const cancelledVips = vipGuests.filter(g => g.status === 'cancelled').length
 
   const getStatusBadgeVariant = (status: string) => {
@@ -472,11 +473,11 @@ export function VipGuestsPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cancelled</CardTitle>
+            <CardTitle className="text-sm font-medium">Approved</CardTitle>
             <XCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{cancelledVips}</div>
+            <div className="text-2xl font-bold">{approvedVips}</div>
           </CardContent>
         </Card>
       </div>
