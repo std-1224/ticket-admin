@@ -290,16 +290,16 @@ export const AttendeesPage = () => {
     }
   };
 
-  const getCheckInStatusBadge = (scans: any[]) => {
-    if (scans && scans.length > 0) {
-      return (
-        <Badge variant="default" className="bg-blue-500">
-          Checked In
-        </Badge>
-      );
-    }
-    return <Badge variant="outline">Not Checked In</Badge>;
-  };
+  // const getCheckInStatusBadge = (scans: any[]) => {
+  //   if (scans && scans.length > 0) {
+  //     return (
+  //       <Badge variant="default" className="bg-blue-500">
+  //         Checked In
+  //       </Badge>
+  //     );
+  //   }
+  //   return <Badge variant="outline">Not Checked In</Badge>;
+  // };
 
   if (error) {
     return (
@@ -415,7 +415,7 @@ export const AttendeesPage = () => {
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={statusFilter} onValueChange={handleStatusFilter}>
+              {/* <Select value={statusFilter} onValueChange={handleStatusFilter}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -424,11 +424,11 @@ export const AttendeesPage = () => {
                   <SelectItem value="checked_in">Checked In</SelectItem>
                   <SelectItem value="not_checked_in">Not Checked In</SelectItem>
                 </SelectContent>
-              </Select>
-              <Button onClick={handleExport} variant="outline" size="sm">
+              </Select> */}
+              {/* <Button onClick={handleExport} variant="outline" size="sm">
                 <Download className="h-4 w-4 mr-2" />
                 Export
-              </Button>
+              </Button> */}
             </div>
           </div>
         </CardContent>

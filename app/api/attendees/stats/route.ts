@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const { data: deliveredOrders, error: deliveredError } = await supabaseAdmin
       .from('event_orders')
       .select('total_price')
-      .eq('status', 'paid')
+      .in('status', ['delivered', 'paid'])
 
     const { data: pendingOrders, error: pendingError } = await supabaseAdmin
       .from('event_orders')
