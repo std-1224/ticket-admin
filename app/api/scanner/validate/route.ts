@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-export async function POST(request: NextRequest) {
+export async function POST (request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const isOrder = qr_code.startsWith('ORD-');
-    const isVipGuest = qr_code.startsWith('VIP-');
+    const isOrder = qr_code.startsWith('ORD-')
+    const isVipGuest = qr_code.startsWith('VIP-')
 
     // ORD flow: keep existing behavior
     if (isOrder) {
@@ -89,7 +89,15 @@ export async function POST(request: NextRequest) {
       }
 
       // Handle invalid statuses
-      if (['refunded', 'in_process', 'rejected', 'waiting_payment', 'cancelled'].includes(order.status)) {
+      if (
+        [
+          'refunded',
+          'in_process',
+          'rejected',
+          'waiting_payment',
+          'cancelled'
+        ].includes(order.status)
+      ) {
         await supabase.from('event_scans').insert({
           order_id: order.id,
           scanned_by: scanner_id,
@@ -123,7 +131,10 @@ export async function POST(request: NextRequest) {
 
         if (orderItemsError || !orderItems) {
           return NextResponse.json(
-            { error: 'Failed to fetch order items', details: orderItemsError?.message },
+            {
+              error: 'Failed to fetch order items',
+              details: orderItemsError?.message
+            },
             { status: 500 }
           )
         }
@@ -140,7 +151,10 @@ export async function POST(request: NextRequest) {
           if (ticketFetchError || !ticketType) {
             console.error('Failed to fetch ticket type:', ticketFetchError)
             return NextResponse.json(
-              { error: 'Failed to fetch ticket type', details: ticketFetchError?.message },
+              {
+                error: 'Failed to fetch ticket type',
+                details: ticketFetchError?.message
+              },
               { status: 500 }
             )
           }
@@ -156,76 +170,94 @@ export async function POST(request: NextRequest) {
           // Update ticket quantity
           const { error: ticketUpdateError } = await supabase
             .from('ticket_types')
-            .update({ 
-              total_quantity: ticketType.total_quantity - item.amount 
+            .update({
+              total_quantity: ticketType.total_quantity - item.amount
             })
             .eq('id', item.ticket_type_id)
 
           if (ticketUpdateError) {
-            console.error('Failed to update ticket quantity:', ticketUpdateError)
+            console.error(
+              'Failed to update ticket quantity:',
+              ticketUpdateError
+            )
             return NextResponse.json(
-              { error: 'Failed to update ticket quantity', details: ticketUpdateError.message },
+              {
+                error: 'Failed to update ticket quantity',
+                details: ticketUpdateError.message
+              },
               { status: 500 }
             )
           }
         }
 
         // Record successful scan
-        const { error: scanInsertError } = await supabase.from('event_scans').insert({
-        order_id: order.id,
-        scanned_by: scanner_id,
-        status: 'valid'
-      })
+        const { error: scanInsertError } = await supabase
+          .from('event_scans')
+          .insert({
+            order_id: order.id,
+            scanned_by: scanner_id,
+            status: 'valid'
+          })
 
-      if (scanInsertError) {
-        return NextResponse.json(
-          { error: 'Failed to record scan', details: scanInsertError.message },
-          { status: 500 }
-        )
-      }
-
-      const { error: updateError } = await supabase
-        .from('event_orders')
-        .update({ status: 'delivered' })
-        .eq('id', order.id)
-
-      if (updateError) {
-        console.error('Failed to update order status:', updateError)
-      }
-
-      const { error: orderItemsUpdateError } = await supabase
-        .from('event_order_items')
-        .update({ status: 'delivered' })
-        .eq('order_id', order.id)
-
-      if (orderItemsUpdateError) {
-        console.error('Failed to update order_items status:', orderItemsUpdateError)
-      }
-
-      const { error: transactionUpdateError } = await supabase
-        .from('event_transactions')
-        .update({ status: 'delivered' })
-        .eq('order_id', order.id)
-
-      if (transactionUpdateError) {
-        console.error('Failed to update transaction status:', transactionUpdateError)
-      }
-
-      return NextResponse.json({
-        success: true,
-        status: 'valid',
-        message: 'QR code is valid',
-        order: {
-          id: order.id,
-          event_title: order.events?.title,
-          total_amount: order.total_amount,
-          user_id: order.user_id,
-          created_at: order.created_at,
-          status: 'delivered',
-          user_name: order.users?.name,
-          user_email: order.users?.email
+        if (scanInsertError) {
+          return NextResponse.json(
+            {
+              error: 'Failed to record scan',
+              details: scanInsertError.message
+            },
+            { status: 500 }
+          )
         }
-      })
+
+        const { error: updateError } = await supabase
+          .from('event_orders')
+          .update({ status: 'delivered' })
+          .eq('id', order.id)
+
+        if (updateError) {
+          console.error('Failed to update order status:', updateError)
+        }
+
+        const { error: orderItemsUpdateError } = await supabase
+          .from('event_order_items')
+          .update({ status: 'delivered' })
+          .eq('order_id', order.id)
+
+        if (orderItemsUpdateError) {
+          console.error(
+            'Failed to update order_items status:',
+            orderItemsUpdateError
+          )
+        }
+
+        const { error: transactionUpdateError } = await supabase
+          .from('event_transactions')
+          .update({ status: 'delivered' })
+          .eq('order_id', order.id)
+
+        if (transactionUpdateError) {
+          console.error(
+            'Failed to update transaction status:',
+            transactionUpdateError
+          )
+        }
+
+        return NextResponse.json({
+          success: true,
+          status: 'valid',
+          message: 'QR code is valid',
+          order: {
+            id: order.id,
+            event_title: order.events?.title,
+            total_amount: order.total_amount,
+            user_id: order.user_id,
+            created_at: order.created_at,
+            status: 'delivered',
+            user_name: order.users?.name,
+            user_email: order.users?.email
+          }
+        })
+      }
     }
 
     // VIP flow
@@ -274,7 +306,10 @@ export async function POST(request: NextRequest) {
             .eq('id', vipGuest.id)
 
           if (vipUpdateError) {
-            console.error('Failed to update vip_guest status to delivered:', vipUpdateError)
+            console.error(
+              'Failed to update vip_guest status to delivered:',
+              vipUpdateError
+            )
           } else {
             // reflect change in response object
             vipGuest.status = 'delivered'
@@ -388,8 +423,6 @@ export async function POST(request: NextRequest) {
       order: null,
       vip_guest: null
     })
-  }
-
   } catch (error: any) {
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
