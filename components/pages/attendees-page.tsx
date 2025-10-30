@@ -273,6 +273,18 @@ export const AttendeesPage = () => {
         return <Badge variant="secondary">Pending</Badge>;
       case "cancelled":
         return <Badge variant="destructive">Cancelled</Badge>;
+      case "failed":
+        return <Badge variant="destructive">Payment Failed</Badge>;
+      case "paid":
+        return (
+          <Badge variant="default" className="bg-green-500">
+            Pagado
+          </Badge>
+        );
+      case "rejected":
+        return <Badge variant="destructive">Payment Rejected</Badge>;
+        case "in_process":
+        return <Badge variant="secondary">In Process</Badge>;
       default:
         return <Badge variant="outline">waiting payment</Badge>;
     }
