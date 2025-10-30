@@ -312,6 +312,67 @@ export async function POST(request: NextRequest) {
         // Don't fail the request, just log the error
       }
 
+      // --- Deduct ticket quantities from ticket_types based on this order's items ---
+      try {
+        // Fetch all items for this order: ticket_type_id and amount
+        const { data: orderItems, error: orderItemsError } = await supabase
+          .from('event_order_items')
+          .select('ticket_type_id, amount')
+          .eq('order_id', order.id)
+
+        if (orderItemsError) {
+          console.error('Failed to fetch order items for quantity deduction:', orderItemsError)
+        } else if (orderItems && orderItems.length > 0) {
+          // Summarize amounts per ticket_type_id
+          const qtyMap: Record<string, number> = {}
+          orderItems.forEach((it: any) => {
+            const typeId = it.ticket_type_id
+            const amt = Number(it.amount || 0)
+            if (!typeId) return
+            qtyMap[typeId] = (qtyMap[typeId] || 0) + (isNaN(amt) ? 0 : amt)
+          })
+
+          const ticketTypeIds = Object.keys(qtyMap)
+
+          if (ticketTypeIds.length > 0) {
+            // Fetch current ticket_types rows
+            const { data: ticketTypesRows, error: ticketTypesError } = await supabase
+              .from('ticket_types')
+              .select('id, total_quantity')
+              .in('id', ticketTypeIds)
+
+            if (ticketTypesError) {
+              console.error('Failed to fetch ticket types for quantity deduction:', ticketTypesError)
+            } else if (ticketTypesRows) {
+              // Update each ticket type decrementing by the ordered amount (clamped to >= 0)
+              for (const tt of ticketTypesRows) {
+                try {
+                  const dec = qtyMap[tt.id] || 0
+                  const current = Number(tt.total_quantity || 0)
+                  const newQty = Math.max(0, current - dec)
+
+                  // Only update if there's a change
+                  if (newQty !== current) {
+                    const { error: updateQtyError } = await supabase
+                      .from('ticket_types')
+                      .update({ total_quantity: newQty })
+                      .eq('id', tt.id)
+
+                    if (updateQtyError) {
+                      console.error(`Failed to update ticket_types(${tt.id}) quantity:`, updateQtyError)
+                    }
+                  }
+                } catch (err) {
+                  console.error('Error updating ticket type quantity for', tt.id, err)
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Unexpected error when deducting ticket quantities:', err)
+      }
+
       return NextResponse.json({
         success: true,
         status: 'valid',
