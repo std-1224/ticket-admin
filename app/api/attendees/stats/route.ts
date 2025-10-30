@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const { data: deliveredOrders, error: deliveredError } = await supabaseAdmin
       .from('event_orders')
       .select('total_price')
-      .eq('status', 'delivered')
+      .eq('status', 'paid')
 
     const { data: pendingOrders, error: pendingError } = await supabaseAdmin
       .from('event_orders')
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     if (pendingError) {
       console.error('Error fetching pending orders:', pendingError)
     }
-
+    console.log('Delivered Orders:', deliveredOrders)
     // Calculate totals
     const completePaymentAmount = deliveredOrders?.reduce((sum, order) => sum + (order.total_price || 0), 0) || 0
     const pendingPaymentAmount = pendingOrders?.reduce((sum, order) => sum + (order.total_price || 0), 0) || 0
